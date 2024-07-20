@@ -158,8 +158,25 @@ void disasmOpcode(chunk_t* chunk, uint16_t opcode) {
 		case 0xB:
 			addOpcode(chunk, "jmp %03X+V0\n", ADDR);
 			break;
+		case 0xC:
+			addOpcode(chunk, "rand V%01X, %02X", X, opcode & 0xFF);
+			break;
 		case 0xD:
 			addOpcode(chunk, "draw V%01X, V%01X, %01X\n", X, Y, opcode & 0xF);
+			break;
+		case 0xE:
+			switch(opcode & 0xFF) {
+				// could probably get better names for these
+				case 0x9E:
+					addOpcode(chunk, "skip_key_down V%01X\n", X);
+					break;
+				case 0xA1:
+					addOpcode(chunk, "skip_key_up V%01X\n", X);
+					break;
+				default:
+					unimplemented(chunk, opcode);
+					break;
+			}
 			break;
 		case 0xF:
 			switch(opcode & 0xFF) {
