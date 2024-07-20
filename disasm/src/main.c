@@ -159,7 +159,7 @@ void disasmOpcode(chunk_t* chunk, uint16_t opcode) {
 			addOpcode(chunk, "jmp %03X+V0\n", ADDR);
 			break;
 		case 0xC:
-			addOpcode(chunk, "rand V%01X, %02X", X, opcode & 0xFF);
+			addOpcode(chunk, "rand V%01X, %02X\n", X, opcode & 0xFF);
 			break;
 		case 0xD:
 			addOpcode(chunk, "draw V%01X, V%01X, %01X\n", X, Y, opcode & 0xF);
