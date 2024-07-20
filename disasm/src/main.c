@@ -244,8 +244,14 @@ int main(int argc, char** argv) {
 	while(c != NULL) {
 		printf("%03X:\n", c->offset);
 		printf("%s\n", c->opcodes.str);
+
+		chunk_t* next = c->next;
+		free(c->opcodes.str);
+		free(c);
 		c = c->next;
 	}
+
+	free(rom);
 
 	return 0;
 }
