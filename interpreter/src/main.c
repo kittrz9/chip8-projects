@@ -137,6 +137,13 @@ int main(int argc, char** argv) {
 	cpu.pc = 0x200;
 
 	while(1) {
+		// probably not the best for performance to poll every time an instruction is ran
+		// but polling every frame lets things that run in an infinite loop not close
+		SDL_Event e;
+		SDL_PollEvent(&e);
+		if(e.type == SDL_QUIT) { 
+			break;
+		}
 		uint16_t op = ram[cpu.pc]<<8 | ram[cpu.pc+1];
 #define X (op>>8 & 0xF)
 #define Y (op>>4 & 0xF)
