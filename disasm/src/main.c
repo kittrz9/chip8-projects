@@ -149,8 +149,11 @@ void disasmOpcode(chunk_t* chunk, uint16_t opcode) {
 				case 0x18:
 					addOpcode(chunk, "set_sound V%01X\n", X);
 					break;
-				case 0x29:
+				case 0x1E:
 					addOpcode(chunk, "add_i V%01X\n", X);
+					break;
+				case 0x29:
+					addOpcode(chunk, "get_sprite V%01X\n", X);
 					break;
 				case 0x33:
 					addOpcode(chunk, "bcd V%01X\n", X);
