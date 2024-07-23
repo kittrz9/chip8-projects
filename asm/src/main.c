@@ -33,15 +33,13 @@ label_t* labels = NULL;
 
 label_t* findLabel(char* name) {
 	label_t* currentLabel = labels;
-	label_t* foundLabel = NULL;
 	while(currentLabel != NULL) {
 		if(strcmp(currentLabel->name, name) == 0) {
-			foundLabel = currentLabel;
-			break;
+			return currentLabel;
 		}
 		currentLabel = currentLabel->next;
 	}
-	return foundLabel;
+	return NULL;
 }
 
 typedef struct line_struct {
@@ -134,21 +132,15 @@ int main(int argc, char** argv) {
 				++i;
 			}
 		} else if(*c == ' ' || *c == '\t') {
-			while(*c == ' ' || *c == '\t') {
-				++c;
-			}
+			c = strtok(c, "\t ");
 			uint16_t opcode = 0;
 			// really awful way to do this
 			// should probably also like do actual lexical analysis or whatever
 			if(strncmp(c, "ldv", 3) == 0) {
 				// skip to the first argument and the v
-				c += 5;
+				c = strtok(NULL, " ,v");
 				uint8_t x = hexStrToInt(c, 1);
-				++c;
-				// should probably make it only ignore a single comma but whatever
-				while(*c == ' ' || *c == ',') {
-					++c;
-				}
+				c = strtok(NULL, " ,");
 				if(*c == 'v') {
 					++c;
 					uint8_t y = hexStrToInt(c, 1);
@@ -157,21 +149,14 @@ int main(int argc, char** argv) {
 					uint8_t immediate = hexStrToInt(c, 2);
 					opcode = 0x6000 | (x << 8) | immediate;
 				}
-				// just printing out the opcodes for now
-				// will eventually send these out to a file or something
-				printf("%04X\n", opcode);
 			} else if(strncmp(c, "get_sprite", 10) == 0) {
-				c += 12;
+				c = strtok(NULL, " ,v");
 				uint8_t x = hexStrToInt(c, 1);
 				opcode = 0xF029 | (x << 8);
-				printf("%04X\n", opcode);
 			} else if(strncmp(c, "add", 3) == 0) {
-				c += 5;
+				c = strtok(NULL, " ,v");
 				uint8_t x = hexStrToInt(c, 1);
-				++c;
-				while(*c == ' ' || *c == ',') {
-					++c;
-				}
+				c = strtok(NULL, " ,");
 				if(*c == 'v') {
 					++c;
 					uint8_t y = hexStrToInt(c, 1);
@@ -180,39 +165,31 @@ int main(int argc, char** argv) {
 					uint8_t immediate = hexStrToInt(c, 2);
 					opcode = 0x7000 | (x << 8) | immediate;
 				}
-				printf("%04X\n", opcode);
 			} else if(strncmp(c, "draw", 4) == 0) {
-				c += 6;
+				c = strtok(NULL, " ,v");
 				uint8_t x = hexStrToInt(c, 1);
-				++c;
-				while(*c == ' ' || *c == ',') {
-					++c;
-				}
-				++c;
+				c = strtok(NULL, " ,v");
 				uint8_t y = hexStrToInt(c, 1);
-				++c;
-				while(*c == ' ' || *c == ',') {
-					++c;
-				}
+				c = strtok(NULL, " ,v");
 				uint8_t n = hexStrToInt(c, 1);
 				opcode = 0xD000 | (x << 8) | (y << 4) | n;
-				printf("%04X\n", opcode);
 			} else if(strncmp(c, "jmp", 3) == 0) {
-				c += 4;
+				c = strtok(NULL, " ,v");
 				label_t* jumpLabel = findLabel(c);
 				if(jumpLabel == NULL) {
 					printf("label \"%s\" not found\n", c);
 					exit(1);
 				}
 				opcode = 0x1000 | jumpLabel->address;
-				printf("%04X\n", opcode);
 			} else {
 				printf("unimplemented instruction\n");
 			}
-			// I hate this so goddamn much
+			printf("%04X\n", opcode);
+
 			if(littleEndian) {
 				opcode = (opcode << 8) | (opcode >> 8);
 			}
+
 			fwrite(&opcode, 2, 1, outputFile);
 			pc += 2;
 		}
