@@ -1,9 +1,8 @@
 
 entry:
-	ldv V0, a
+	ldv V0, 0
 	ldv V1, 0
-	ldv V2, 0
-	ldv v3, v2
+	ldv V2, a
 loop:
 	get_sprite V2
 	draw V0, V1, 5

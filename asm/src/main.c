@@ -29,6 +29,20 @@ typedef struct label_struct {
 	uint16_t address;
 	struct label_struct* next;
 } label_t;
+label_t* labels = NULL;
+
+label_t* findLabel(char* name) {
+	label_t* currentLabel = labels;
+	label_t* foundLabel = NULL;
+	while(currentLabel != NULL) {
+		if(strcmp(currentLabel->name, name) == 0) {
+			foundLabel = currentLabel;
+			break;
+		}
+		currentLabel = currentLabel->next;
+	}
+	return foundLabel;
+}
 
 typedef struct line_struct {
 	char str[MAX_STRLEN];
@@ -89,7 +103,6 @@ int main(int argc, char** argv) {
 
 	currentLine = lines;
 	uint16_t pc = 0x200;
-	label_t* labels = NULL;
 	label_t* lastLabel = labels;
 	while(currentLine != NULL) {
 		printf("-%s\n", currentLine->str);
@@ -121,7 +134,6 @@ int main(int argc, char** argv) {
 				// skip to the first argument and the v
 				c += 5;
 				uint8_t x = hexStrToInt(c, 1);
-				printf("--X %c %04X\n", *c, x);
 				++c;
 				// should probably make it only ignore a single comma but whatever
 				while(*c == ' ' || *c == ',') {
@@ -134,11 +146,56 @@ int main(int argc, char** argv) {
 					opcode = 0x8000 | (x << 8) | (y << 4);
 				} else {
 					uint8_t immediate = hexStrToInt(c, 2);
-					printf("--imm %c %04X\n", *c, immediate);
 					opcode = 0x6000 | (x << 8) | immediate;
 				}
 				// just printing out the opcodes for now
 				// will eventually send these out to a file or something
+				printf("%04X\n", opcode);
+			} else if(strncmp(c, "get_sprite", 10) == 0) {
+				c += 12;
+				uint8_t x = hexStrToInt(c, 1);
+				uint16_t opcode = 0xF029 | (x << 8);
+				printf("%04X\n", opcode);
+			} else if(strncmp(c, "add", 3) == 0) {
+				c += 5;
+				uint8_t x = hexStrToInt(c, 1);
+				++c;
+				while(*c == ' ' || *c == ',') {
+					++c;
+				}
+				uint16_t opcode;
+				if(*c == 'v') {
+					++c;
+					uint8_t y = hexStrToInt(c, 1);
+					opcode = 0x8004 | (x << 8) | (y << 4);
+				} else {
+					uint8_t immediate = hexStrToInt(c, 2);
+					opcode = 0x7000 | (x << 8) | immediate;
+				}
+				printf("%04X\n", opcode);
+			} else if(strncmp(c, "draw", 4) == 0) {
+				c += 6;
+				uint8_t x = hexStrToInt(c, 1);
+				++c;
+				while(*c == ' ' || *c == ',') {
+					++c;
+				}
+				uint8_t y = hexStrToInt(c, 1);
+				++c;
+				while(*c == ' ' || *c == ',') {
+					++c;
+				}
+				uint8_t n = hexStrToInt(c, 1);
+				uint16_t opcode = 0xD000 | (x << 8) | (y << 4) | n;
+				printf("%04X\n", opcode);
+			} else if(strncmp(c, "jmp", 3) == 0) {
+				c += 4;
+				label_t* jumpLabel = findLabel(c);
+				if(jumpLabel == NULL) {
+					printf("label \"%s\" not found\n", c);
+					exit(1);
+				}
+				uint16_t opcode = 0x1000 | jumpLabel->address;
 				printf("%04X\n", opcode);
 			} else {
 				printf("unimplemented instruction\n");
