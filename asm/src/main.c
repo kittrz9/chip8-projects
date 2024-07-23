@@ -49,10 +49,19 @@ typedef struct line_struct {
 	struct line_struct* next;
 } line_t;
 
+
+uint8_t endianCheck(void) {
+	uint16_t i = 1;
+	return *((uint8_t*)&i);
+}
+
 int main(int argc, char** argv) {
 	if(argc != 2) { exit(1); }
 
+	uint8_t littleEndian = endianCheck();
+
 	FILE* f = fopen(argv[1], "rb");
+	FILE* outputFile = fopen("out.ch8", "wb");
 
 	fseek(f, 0, SEEK_END);
 	size_t size = ftell(f);
@@ -124,10 +133,11 @@ int main(int argc, char** argv) {
 				++c;
 				++i;
 			}
-		} else {
+		} else if(*c == ' ' || *c == '\t') {
 			while(*c == ' ' || *c == '\t') {
 				++c;
 			}
+			uint16_t opcode = 0;
 			// really awful way to do this
 			// should probably also like do actual lexical analysis or whatever
 			if(strncmp(c, "ldv", 3) == 0) {
@@ -139,7 +149,6 @@ int main(int argc, char** argv) {
 				while(*c == ' ' || *c == ',') {
 					++c;
 				}
-				uint16_t opcode;
 				if(*c == 'v') {
 					++c;
 					uint8_t y = hexStrToInt(c, 1);
@@ -154,7 +163,7 @@ int main(int argc, char** argv) {
 			} else if(strncmp(c, "get_sprite", 10) == 0) {
 				c += 12;
 				uint8_t x = hexStrToInt(c, 1);
-				uint16_t opcode = 0xF029 | (x << 8);
+				opcode = 0xF029 | (x << 8);
 				printf("%04X\n", opcode);
 			} else if(strncmp(c, "add", 3) == 0) {
 				c += 5;
@@ -163,7 +172,6 @@ int main(int argc, char** argv) {
 				while(*c == ' ' || *c == ',') {
 					++c;
 				}
-				uint16_t opcode;
 				if(*c == 'v') {
 					++c;
 					uint8_t y = hexStrToInt(c, 1);
@@ -180,13 +188,14 @@ int main(int argc, char** argv) {
 				while(*c == ' ' || *c == ',') {
 					++c;
 				}
+				++c;
 				uint8_t y = hexStrToInt(c, 1);
 				++c;
 				while(*c == ' ' || *c == ',') {
 					++c;
 				}
 				uint8_t n = hexStrToInt(c, 1);
-				uint16_t opcode = 0xD000 | (x << 8) | (y << 4) | n;
+				opcode = 0xD000 | (x << 8) | (y << 4) | n;
 				printf("%04X\n", opcode);
 			} else if(strncmp(c, "jmp", 3) == 0) {
 				c += 4;
@@ -195,20 +204,29 @@ int main(int argc, char** argv) {
 					printf("label \"%s\" not found\n", c);
 					exit(1);
 				}
-				uint16_t opcode = 0x1000 | jumpLabel->address;
+				opcode = 0x1000 | jumpLabel->address;
 				printf("%04X\n", opcode);
 			} else {
 				printf("unimplemented instruction\n");
 			}
+			// I hate this so goddamn much
+			if(littleEndian) {
+				opcode = (opcode << 8) | (opcode >> 8);
+			}
+			fwrite(&opcode, 2, 1, outputFile);
 			pc += 2;
 		}
-		currentLine = currentLine->next;
+		line_t* next = currentLine->next;
+		free(currentLine);
+		currentLine = next;
 	}
 
 	label_t* currentLabel = labels;
 	while(currentLabel != NULL) {
 		printf("- name: \"%s\", address, %03X -\n", currentLabel->name, currentLabel->address);
-		currentLabel = currentLabel->next;
+		label_t* next = currentLabel->next;
+		free(currentLabel);
+		currentLabel = next;
 	}
 
 	return 0;

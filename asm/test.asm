@@ -7,4 +7,5 @@ loop:
 	get_sprite V2
 	draw V0, V1, 5
 	add V2, 1
-	jmp loop
+loop2:
+	jmp loop2
