@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include "labels.h"
+#include "instructions.h"
 
 uint16_t hexStrToInt(char* str, uint8_t digits) {
 	char hexLUT[] = "0123456789abcdef";
@@ -27,37 +28,6 @@ uint16_t hexStrToInt(char* str, uint8_t digits) {
 }
 
 // will eventually move this array to a file specifically for instructions probably
-char* instructionNames[] = {
-	"clear",
-	"ret",
-	"jmp",
-	"call",
-	"skip_eq",
-	"skip_ne",
-	"ldv",
-	"add",
-	"or",
-	"and",
-	"xor",
-	"sub",
-	"sub2",
-	"shift_r",
-	"shift_l",
-	"ldi",
-	"rand",
-	"draw",
-	"skip_key_down",
-	"skip_key_up",
-	"get_delay",
-	"set_delay",
-	"get_sound",
-	"set_sound",
-	"add_i",
-	"get_sprite",
-	"bcd",
-	"dump_reg",
-	"load_reg",
-};
 
 uint8_t endsWith(char* str, char c) {
 	while(*str != '\0') {
@@ -93,17 +63,12 @@ token_t* tokenize(char* str) {
 		} else if(tokenStr[0] == '@') {
 			printf("label address!!!! %s\n", tokenStr);
 			newToken = tokenCreate(TOKEN_LABEL_ADDR, tokenStr);
+		} else if(validInstruction(tokenStr)) {
+			printf("instruction!!!! %s\n", tokenStr);
+			newToken = tokenCreate(TOKEN_INSTRUCTION, tokenStr);
 		} else {
-			for(uint8_t i = 0; i < sizeof(instructionNames)/sizeof(instructionNames[0]); ++i) {
-				if(strcmp(tokenStr, instructionNames[i]) == 0) {
-					printf("instruction!!!! %s\n", tokenStr);
-					newToken = tokenCreate(TOKEN_INSTRUCTION, tokenStr);
-				}
-			}
-			if(newToken == NULL) {
-				printf("unrecognized token %s %02X\n", tokenStr, *tokenStr);
-				exit(1);
-			}
+			printf("unrecognized token %s %02X\n", tokenStr, *tokenStr);
+			exit(1);
 		}
 		if(tokens == NULL) {
 			tokens = newToken;

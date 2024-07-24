@@ -6,6 +6,7 @@
 #include "lines.h"
 #include "labels.h"
 #include "tokens.h"
+#include "instructions.h"
 
 uint8_t endianCheck(void) {
 	uint16_t i = 1;
@@ -65,50 +66,7 @@ int main(int argc, char** argv) {
 					newLabel(currentToken->str, pc);
 					break;
 				case TOKEN_INSTRUCTION: {
-					uint16_t opcode = 0;
-					if(strcmp(currentToken->str, "ldv") == 0) {
-						currentToken = tokenNext(currentToken);
-						uint8_t x = getTokenReg(currentToken);
-						currentToken = tokenNext(currentToken);
-						if(currentToken->type == TOKEN_REGISTER) {
-							uint8_t y = getTokenReg(currentToken);
-							opcode = 0x8000 | (x << 8) | (y << 4);
-						} else if(currentToken->type == TOKEN_NUMBER) {
-							uint8_t n = getTokenNum(currentToken);
-							opcode = 0x6000 | (x << 8) | n;
-						}
-					} else if(strcmp(currentToken->str, "get_sprite") == 0) {
-						currentToken = tokenNext(currentToken);
-						uint8_t x = getTokenReg(currentToken);
-						opcode = 0xF029 | (x << 8);
-					} else if(strcmp(currentToken->str, "draw") == 0) {
-						currentToken = tokenNext(currentToken);
-						uint8_t x = getTokenReg(currentToken);
-						currentToken = tokenNext(currentToken);
-						uint8_t y = getTokenReg(currentToken);
-						currentToken = tokenNext(currentToken);
-						uint8_t n = getTokenNum(currentToken);
-						opcode = 0xD000 | (x << 8) | (y << 4) | n;
-					} else if(strcmp(currentToken->str, "add") == 0) {
-						currentToken = tokenNext(currentToken);
-						uint8_t x = getTokenReg(currentToken);
-						currentToken = tokenNext(currentToken);
-						if(currentToken->type == TOKEN_REGISTER) {
-							uint8_t y = getTokenReg(currentToken);
-							opcode = 0x8004 | (x << 8) | (y << 4);
-						} else if(currentToken->type == TOKEN_NUMBER) {
-							uint8_t n = getTokenNum(currentToken);
-							opcode = 0x7000 | (x << 8) | n;
-						}
-					} else if(strcmp(currentToken->str, "jmp") == 0) {
-						currentToken = tokenNext(currentToken);
-						uint16_t addr = getTokenLabelAddr(currentToken);
-						// need to implement indexed jmps eventually
-						// just assuming its direct for now
-						opcode = 0x1000 | addr;
-					} else {
-						printf("unimplemented instruction \"%s\"\n", currentToken->str);
-					}
+					uint16_t opcode = processInstruction(&currentToken); // autoadvances currentToken
 					printf("%04X\n", opcode);
 					outputOpcode(outputFile, opcode);
 					pc += 2;
