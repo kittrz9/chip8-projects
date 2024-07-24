@@ -139,6 +139,171 @@ uint16_t processInstruction(token_t** currentToken) {
 			opcode = 0x1000 | addr;
 			break;
 		}
+		case INSTR_CLEAR: {
+			opcode = 0x00E0;
+			break;
+		}
+		case INSTR_RET: {
+			opcode = 0x00EE;
+			break;
+		}
+		case INSTR_CALL: {
+			// need to get it to be able to call functions after it to actually be useful
+			*currentToken = tokenNext(*currentToken);
+			uint16_t addr = getTokenLabelAddr(*currentToken);
+			opcode = 0x2000 | addr;
+			break;
+		}
+		case INSTR_SKIP_EQ: {
+			*currentToken = tokenNext(*currentToken);
+			uint8_t x = getTokenReg(*currentToken);
+			*currentToken = tokenNext(*currentToken);
+			if((*currentToken)->type == TOKEN_REGISTER) {
+				uint8_t y = getTokenReg(*currentToken);
+				opcode = 0x5000 | (x << 8) | (y << 4);
+			} else if((*currentToken)->type == TOKEN_NUMBER) {
+				uint8_t n = getTokenNum(*currentToken);
+				opcode = 0x3000 | (x << 8) | n;
+			}
+			break;
+		}
+		case INSTR_SKIP_NE: {
+			*currentToken = tokenNext(*currentToken);
+			uint8_t x = getTokenReg(*currentToken);
+			*currentToken = tokenNext(*currentToken);
+			if((*currentToken)->type == TOKEN_REGISTER) {
+				uint8_t y = getTokenReg(*currentToken);
+				opcode = 0x9000 | (x << 8) | (y << 4);
+			} else if((*currentToken)->type == TOKEN_NUMBER) {
+				uint8_t n = getTokenNum(*currentToken);
+				opcode = 0x4000 | (x << 8) | n;
+			}
+			break;
+		}
+		case INSTR_OR: {
+			*currentToken = tokenNext(*currentToken);
+			uint8_t x = getTokenReg(*currentToken);
+			*currentToken = tokenNext(*currentToken);
+			uint8_t y = getTokenReg(*currentToken);
+			opcode = 0x8001 | (x << 8) | (y << 4);
+			break;
+		}
+		case INSTR_AND: {
+			*currentToken = tokenNext(*currentToken);
+			uint8_t x = getTokenReg(*currentToken);
+			*currentToken = tokenNext(*currentToken);
+			uint8_t y = getTokenReg(*currentToken);
+			opcode = 0x8002 | (x << 8) | (y << 4);
+			break;
+		}
+		case INSTR_XOR: {
+			*currentToken = tokenNext(*currentToken);
+			uint8_t x = getTokenReg(*currentToken);
+			*currentToken = tokenNext(*currentToken);
+			uint8_t y = getTokenReg(*currentToken);
+			opcode = 0x8003 | (x << 8) | (y << 4);
+			break;
+		}
+		case INSTR_SUB: {
+			*currentToken = tokenNext(*currentToken);
+			uint8_t x = getTokenReg(*currentToken);
+			*currentToken = tokenNext(*currentToken);
+			uint8_t y = getTokenReg(*currentToken);
+			opcode = 0x8005 | (x << 8) | (y << 4);
+			break;
+		}
+		case INSTR_SUB2: {
+			*currentToken = tokenNext(*currentToken);
+			uint8_t x = getTokenReg(*currentToken);
+			*currentToken = tokenNext(*currentToken);
+			uint8_t y = getTokenReg(*currentToken);
+			opcode = 0x8007 | (x << 8) | (y << 4);
+			break;
+		}
+		case INSTR_SHIFT_R: {
+			*currentToken = tokenNext(*currentToken);
+			uint8_t x = getTokenReg(*currentToken);
+			*currentToken = tokenNext(*currentToken);
+			uint8_t y = getTokenReg(*currentToken);
+			opcode = 0x8006 | (x << 8) | (y << 4);
+			break;
+		}
+		case INSTR_SHIFT_L: {
+			*currentToken = tokenNext(*currentToken);
+			uint8_t x = getTokenReg(*currentToken);
+			*currentToken = tokenNext(*currentToken);
+			uint8_t y = getTokenReg(*currentToken);
+			opcode = 0x800E | (x << 8) | (y << 4);
+			break;
+		}
+		case INSTR_LDI: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t n = getTokenNum(*currentToken);
+			opcode = 0xA000 | n;
+			break;
+		}
+		case INSTR_RAND: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t x = getTokenReg(*currentToken);
+			*currentToken = tokenNext(*currentToken);
+			uint16_t n = getTokenNum(*currentToken);
+			opcode = 0xC000 | (x << 8) | n;
+			break;
+		}
+		case INSTR_SKIP_KEY_UP: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t x = getTokenReg(*currentToken);
+			opcode = 0xE09E | (x << 8);
+			break;
+		}
+		case INSTR_SKIP_KEY_DOWN: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t x = getTokenReg(*currentToken);
+			opcode = 0xE0A1 | (x << 8);
+			break;
+		}
+		case INSTR_GET_DELAY: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t x = getTokenReg(*currentToken);
+			opcode = 0xF007 | (x << 8);
+			break;
+		}
+		case INSTR_SET_DELAY: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t x = getTokenReg(*currentToken);
+			opcode = 0xF015 | (x << 8);
+			break;
+		}
+		case INSTR_SET_SOUND: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t x = getTokenReg(*currentToken);
+			opcode = 0xF00A | (x << 8);
+			break;
+		}
+		case INSTR_ADD_I: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t x = getTokenReg(*currentToken);
+			opcode = 0xF01E | (x << 8);
+			break;
+		}
+		case INSTR_BCD: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t x = getTokenReg(*currentToken);
+			opcode = 0xF033 | (x << 8);
+			break;
+		}
+		case INSTR_DUMP_REG: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t x = getTokenReg(*currentToken);
+			opcode = 0xF055 | (x << 8);
+			break;
+		}
+		case INSTR_LOAD_REG: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t x = getTokenReg(*currentToken);
+			opcode = 0xF065 | (x << 8);
+			break;
+		}
 	}
 	return opcode;
 }

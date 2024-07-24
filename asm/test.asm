@@ -1,5 +1,4 @@
 
-
 ; funny comment
 entry:
 	ldv V0, #0 ; end of line comment
@@ -11,3 +10,4 @@ loop:
 	add V2, #1
 loop2:
 	jmp @loop2
+	bcd V1
