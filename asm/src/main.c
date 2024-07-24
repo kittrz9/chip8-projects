@@ -5,35 +5,26 @@
 
 #include "lines.h"
 #include "labels.h"
-
-uint16_t hexStrToInt(char* str, uint8_t digits) {
-	char hexLUT[] = "0123456789abcdef";
-	uint16_t value = 0;
-	while(digits != 0) {
-		if(*str == ' ' || *str == '\n' || *str == ',' || *str == '\0') { break; }
-		value <<= 4;
-		uint8_t i;
-		for(i = 0; i < sizeof(hexLUT)/sizeof(hexLUT[0]); ++i) {
-			if(*str == hexLUT[i]) {
-				break;
-			}
-		}
-		value |= i;
-		++str;
-		--digits;
-	}
-	return value;
-}
+#include "tokens.h"
 
 uint8_t endianCheck(void) {
 	uint16_t i = 1;
 	return *((uint8_t*)&i);
 }
 
+uint8_t littleEndian = 0;
+void outputOpcode(FILE* f, uint16_t opcode) {
+	if(littleEndian) {
+		opcode = (opcode << 8) | (opcode >> 8);
+	}
+
+	fwrite(&opcode, 2, 1, f);
+}
+
 int main(int argc, char** argv) {
 	if(argc != 2) { exit(1); }
 
-	uint8_t littleEndian = endianCheck();
+	littleEndian = endianCheck();
 
 	FILE* f = fopen(argv[1], "rb");
 	FILE* outputFile = fopen("out.ch8", "wb");
@@ -42,8 +33,9 @@ int main(int argc, char** argv) {
 	size_t size = ftell(f);
 	fseek(f, 0, SEEK_SET);
 
-	char* asmFile = malloc(size);
+	char* asmFile = malloc(size+1);
 	fread(asmFile, size, 1, f);
+	asmFile[size] = '\0';
 
 	// convert it all to lowercase
 	// so its easier to process
@@ -63,71 +55,71 @@ int main(int argc, char** argv) {
 	uint16_t pc = 0x200;
 	while(currentLine != NULL) {
 		printf("-%s\n", currentLine->str);
-		// should probably tokenize the line
-		c = currentLine->str;
-		if(currentLine->str[0] >= 'a' && currentLine->str[0] <= 'z') {
-			newLabel(c, pc);
-		} else if(*c == ' ' || *c == '\t') {
-			c = strtok(c, "\t ");
-			uint16_t opcode = 0;
-			// really awful way to do this
-			// should probably also like do actual lexical analysis or whatever
-			if(strncmp(c, "ldv", 3) == 0) {
-				// skip to the first argument and the v
-				c = strtok(NULL, " ,v");
-				uint8_t x = hexStrToInt(c, 1);
-				c = strtok(NULL, " ,");
-				if(*c == 'v') {
-					++c;
-					uint8_t y = hexStrToInt(c, 1);
-					opcode = 0x8000 | (x << 8) | (y << 4);
-				} else {
-					uint8_t immediate = hexStrToInt(c, 2);
-					opcode = 0x6000 | (x << 8) | immediate;
+		token_t* tokens = tokenize(currentLine->str);
+		token_t* currentToken = tokens;
+		while(currentToken != NULL) {
+			printf("%i \"%s\"\n", currentToken->type, currentToken->str);
+
+			switch(currentToken->type) {
+				case TOKEN_LABEL:
+					newLabel(currentToken->str, pc);
+					break;
+				case TOKEN_INSTRUCTION: {
+					uint16_t opcode = 0;
+					if(strcmp(currentToken->str, "ldv") == 0) {
+						currentToken = tokenNext(currentToken);
+						uint8_t x = getTokenReg(currentToken);
+						currentToken = tokenNext(currentToken);
+						if(currentToken->type == TOKEN_REGISTER) {
+							uint8_t y = getTokenReg(currentToken);
+							opcode = 0x8000 | (x << 8) | (y << 4);
+						} else if(currentToken->type == TOKEN_NUMBER) {
+							uint8_t n = getTokenNum(currentToken);
+							opcode = 0x6000 | (x << 8) | n;
+						}
+					} else if(strcmp(currentToken->str, "get_sprite") == 0) {
+						currentToken = tokenNext(currentToken);
+						uint8_t x = getTokenReg(currentToken);
+						opcode = 0xF029 | (x << 8);
+					} else if(strcmp(currentToken->str, "draw") == 0) {
+						currentToken = tokenNext(currentToken);
+						uint8_t x = getTokenReg(currentToken);
+						currentToken = tokenNext(currentToken);
+						uint8_t y = getTokenReg(currentToken);
+						currentToken = tokenNext(currentToken);
+						uint8_t n = getTokenNum(currentToken);
+						opcode = 0xD000 | (x << 8) | (y << 4) | n;
+					} else if(strcmp(currentToken->str, "add") == 0) {
+						currentToken = tokenNext(currentToken);
+						uint8_t x = getTokenReg(currentToken);
+						currentToken = tokenNext(currentToken);
+						if(currentToken->type == TOKEN_REGISTER) {
+							uint8_t y = getTokenReg(currentToken);
+							opcode = 0x8004 | (x << 8) | (y << 4);
+						} else if(currentToken->type == TOKEN_NUMBER) {
+							uint8_t n = getTokenNum(currentToken);
+							opcode = 0x7000 | (x << 8) | n;
+						}
+					} else if(strcmp(currentToken->str, "jmp") == 0) {
+						currentToken = tokenNext(currentToken);
+						uint16_t addr = getTokenLabelAddr(currentToken);
+						// need to implement indexed jmps eventually
+						// just assuming its direct for now
+						opcode = 0x1000 | addr;
+					} else {
+						printf("unimplemented instruction \"%s\"\n", currentToken->str);
+					}
+					printf("%04X\n", opcode);
+					outputOpcode(outputFile, opcode);
+					pc += 2;
+					break;
 				}
-			} else if(strncmp(c, "get_sprite", 10) == 0) {
-				c = strtok(NULL, " ,v");
-				uint8_t x = hexStrToInt(c, 1);
-				opcode = 0xF029 | (x << 8);
-			} else if(strncmp(c, "add", 3) == 0) {
-				c = strtok(NULL, " ,v");
-				uint8_t x = hexStrToInt(c, 1);
-				c = strtok(NULL, " ,");
-				if(*c == 'v') {
-					++c;
-					uint8_t y = hexStrToInt(c, 1);
-					opcode = 0x8004 | (x << 8) | (y << 4);
-				} else {
-					uint8_t immediate = hexStrToInt(c, 2);
-					opcode = 0x7000 | (x << 8) | immediate;
-				}
-			} else if(strncmp(c, "draw", 4) == 0) {
-				c = strtok(NULL, " ,v");
-				uint8_t x = hexStrToInt(c, 1);
-				c = strtok(NULL, " ,v");
-				uint8_t y = hexStrToInt(c, 1);
-				c = strtok(NULL, " ,v");
-				uint8_t n = hexStrToInt(c, 1);
-				opcode = 0xD000 | (x << 8) | (y << 4) | n;
-			} else if(strncmp(c, "jmp", 3) == 0) {
-				c = strtok(NULL, " ,v");
-				label_t* jumpLabel = findLabel(c);
-				if(jumpLabel == NULL) {
-					printf("label \"%s\" not found\n", c);
+				default:
+					printf("syntax error lmao\n");
 					exit(1);
-				}
-				opcode = 0x1000 | jumpLabel->address;
-			} else {
-				printf("unimplemented instruction\n");
-			}
-			printf("%04X\n", opcode);
-
-			if(littleEndian) {
-				opcode = (opcode << 8) | (opcode >> 8);
 			}
 
-			fwrite(&opcode, 2, 1, outputFile);
-			pc += 2;
+			currentToken = tokenNext(currentToken);
 		}
 		line_t* next = currentLine->next;
 		free(currentLine);
