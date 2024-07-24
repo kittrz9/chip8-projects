@@ -3,6 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "lines.h"
+#include "labels.h"
+
 uint16_t hexStrToInt(char* str, uint8_t digits) {
 	char hexLUT[] = "0123456789abcdef";
 	uint16_t value = 0;
@@ -21,32 +24,6 @@ uint16_t hexStrToInt(char* str, uint8_t digits) {
 	}
 	return value;
 }
-
-#define MAX_STRLEN 64
-
-typedef struct label_struct {
-	char name[MAX_STRLEN];
-	uint16_t address;
-	struct label_struct* next;
-} label_t;
-label_t* labels = NULL;
-
-label_t* findLabel(char* name) {
-	label_t* currentLabel = labels;
-	while(currentLabel != NULL) {
-		if(strcmp(currentLabel->name, name) == 0) {
-			return currentLabel;
-		}
-		currentLabel = currentLabel->next;
-	}
-	return NULL;
-}
-
-typedef struct line_struct {
-	char str[MAX_STRLEN];
-	struct line_struct* next;
-} line_t;
-
 
 uint8_t endianCheck(void) {
 	uint16_t i = 1;
@@ -78,59 +55,18 @@ int main(int argc, char** argv) {
 		++c;
 	}
 
-	// split it into lines
-	line_t* lines = malloc(sizeof(line_t));
-	lines->next = NULL;
-
-	c = asmFile;
-	line_t* currentLine = lines;
-	uint8_t lineIndex = 0;
-	while(*c != '\0') {
-		if(*c == '\n') {
-			currentLine->next = malloc(sizeof(line_t));
-			currentLine = currentLine->next;
-			currentLine->next = NULL;
-			lineIndex = 0;
-		} else {
-			if(lineIndex >= MAX_STRLEN) {
-				printf("max line length exceeded\n");
-				exit(1);
-			}
-
-			currentLine->str[lineIndex] = *c;
-			++lineIndex;
-		}
-
-		++c;
-	}
-
-	//printf("%s\n", asmFile);
+	line_t* lines = strToLines(asmFile);
 
 	free(asmFile);
 
-	currentLine = lines;
+	line_t* currentLine = lines;
 	uint16_t pc = 0x200;
-	label_t* lastLabel = labels;
 	while(currentLine != NULL) {
 		printf("-%s\n", currentLine->str);
+		// should probably tokenize the line
 		c = currentLine->str;
 		if(currentLine->str[0] >= 'a' && currentLine->str[0] <= 'z') {
-			printf("new label found\n");
-			if(labels == NULL) {
-				labels = malloc(sizeof(label_t));
-				lastLabel = labels;
-			} else {
-				lastLabel->next = malloc(sizeof(label_t));
-				lastLabel = lastLabel->next;
-			}
-			lastLabel->next = NULL;
-			lastLabel->address = pc;
-			uint8_t i = 0;
-			while(*c != ':' && *c != '\n' && *c != '\0') {
-				lastLabel->name[i] = *c;
-				++c;
-				++i;
-			}
+			newLabel(c, pc);
 		} else if(*c == ' ' || *c == '\t') {
 			c = strtok(c, "\t ");
 			uint16_t opcode = 0;

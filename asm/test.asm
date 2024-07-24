@@ -1,6 +1,8 @@
 
+
+; funny comment
 entry:
-	ldv V0, 0
+	ldv V0, 0 ; end of line comment
 	ldv V1, 0
 	ldv V2, a
 loop:
