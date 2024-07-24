@@ -49,27 +49,27 @@ void disasmOpcode(chunk_t* chunk, uint16_t opcode) {
 			}
 			break;
 		case 1:
-			addOpcode(chunk, "jmp %03X\n", ADDR);
+			addOpcode(chunk, "jmp @%03X\n", ADDR);
 			disasmChunk( ADDR);
 			break;
 		case 2:
-			addOpcode(chunk, "call %03X\n", ADDR);
+			addOpcode(chunk, "call @%03X\n", ADDR);
 			disasmChunk(ADDR);
 			break;
 		case 3:
-			addOpcode(chunk, "skip_eq V%01X, %02X\n", X, IMM);
+			addOpcode(chunk, "skip_eq V%01X, #%02X\n", X, IMM);
 			break;
 		case 4:
-			addOpcode(chunk, "skip_ne V%01X, %02X\n", X, IMM);
+			addOpcode(chunk, "skip_ne V%01X, #%02X\n", X, IMM);
 			break;
 		case 5:
-			addOpcode(chunk, "skip_eq V%01X, v%01X\n", X, Y);
+			addOpcode(chunk, "skip_eq V%01X, V%01X\n", X, Y);
 			break;
 		case 6:
-			addOpcode(chunk, "ldv V%01X, %02X\n", X, IMM);
+			addOpcode(chunk, "ldv V%01X, #%02X\n", X, IMM);
 			break;
 		case 7:
-			addOpcode(chunk, "add V%01X, %02X\n", X, IMM);
+			addOpcode(chunk, "add V%01X, #%02X\n", X, IMM);
 			break;
 		case 8:
 			switch(opcode & 0xF) {
@@ -107,19 +107,19 @@ void disasmOpcode(chunk_t* chunk, uint16_t opcode) {
 			}
 			break;
 		case 9:
-			addOpcode(chunk, "skip_ne V%01X, v%01X\n", X, Y);
+			addOpcode(chunk, "skip_ne V%01X, V%01X\n", X, Y);
 			break;
 		case 0xA:
-			addOpcode(chunk, "ldi %03X\n", ADDR);
+			addOpcode(chunk, "ldi #%03X\n", ADDR);
 			break;
 		case 0xB:
-			addOpcode(chunk, "jmp %03X+V0\n", ADDR);
+			addOpcode(chunk, "jmp V0+@%03X\n", ADDR);
 			break;
 		case 0xC:
-			addOpcode(chunk, "rand V%01X, %02X\n", X, opcode & 0xFF);
+			addOpcode(chunk, "rand V%01X, #%02X\n", X, opcode & 0xFF);
 			break;
 		case 0xD:
-			addOpcode(chunk, "draw V%01X, V%01X, %01X\n", X, Y, opcode & 0xF);
+			addOpcode(chunk, "draw V%01X, V%01X, #%01X\n", X, Y, opcode & 0xF);
 			break;
 		case 0xE:
 			switch(opcode & 0xFF) {
@@ -181,7 +181,7 @@ void disasmChunk(uint16_t pc) {
 		uint16_t currentOpcode = rom[pc-0x200]<<8 | rom[pc-0x200+1];
 		uint16_t lastOpcode = 0;
 		if(pc != 0) { // to make sure it doesn't read out of bounds
-			lastOpcode = rom[pc-0x200]<<8 | rom[pc-0x200+1];
+			lastOpcode = rom[pc-0x200-2]<<8 | rom[pc-0x200-1];
 		}
 		disasmOpcode(newChunk, currentOpcode);
 		// if the current opcode is a jump and cant be skipped, end chunk
