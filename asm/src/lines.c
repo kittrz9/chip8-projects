@@ -15,6 +15,7 @@ line_t* strToLines(char* str) {
 			while(*str != '\n') { ++str; }
 		}
 		if(*str == '\n') {
+			currentLine->str[lineIndex] = '\0';
 			currentLine->next = malloc(sizeof(line_t));
 			currentLine = currentLine->next;
 			currentLine->next = NULL;
@@ -31,6 +32,7 @@ line_t* strToLines(char* str) {
 
 		++str;
 	}
+	currentLine->str[lineIndex] = '\0';
 
 	return lines;
 }

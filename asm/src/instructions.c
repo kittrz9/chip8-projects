@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "backpatches.h"
 
 enum {
 	INSTR_CLEAR,
@@ -80,7 +81,7 @@ uint8_t validInstruction(char* str) {
 }
 
 // will affect currentToken
-uint16_t processInstruction(token_t** currentToken) {
+uint16_t processInstruction(token_t** currentToken, uint16_t pc) {
 	uint8_t instructionIndex = INSTR_INVALID;
 	for(uint8_t i = 0; i < TOTAL_INSTR; ++i) {
 		if(strcmp((*currentToken)->str, instructionNames[i]) == 0) {
@@ -134,6 +135,7 @@ uint16_t processInstruction(token_t** currentToken) {
 		case INSTR_JMP: {
 			*currentToken = tokenNext(*currentToken);
 			uint16_t addr = getTokenLabelAddr(*currentToken);
+			if(addr == 0) { backpatchHere(pc, (*currentToken)->str + 1); } // skip the @
 			// need to implement indexed jmps eventually
 			// just assuming its direct for now
 			opcode = 0x1000 | addr;
@@ -151,6 +153,7 @@ uint16_t processInstruction(token_t** currentToken) {
 			// need to get it to be able to call functions after it to actually be useful
 			*currentToken = tokenNext(*currentToken);
 			uint16_t addr = getTokenLabelAddr(*currentToken);
+			if(addr == 0) { backpatchHere(pc, (*currentToken)->str + 1); } // skip the @
 			opcode = 0x2000 | addr;
 			break;
 		}

@@ -107,5 +107,9 @@ uint16_t getTokenLabelAddr(token_t* t) {
 		printf("expected label, got \"%s\"\n", t->str);
 		exit(1);
 	}
-	return findLabel(t->str+1)->address; // 3 maximum
+	label_t* l = findLabel(t->str+1);
+	if(l == NULL) {
+		return 0;
+	}
+	return l->address;
 }

@@ -1,4 +1,3 @@
  - fix interpreter bugs
  - make the disassembler give labels to places where it jumps back
- - make the assembler allow calls and jumps to later in the program
  - use actual label names in the disassembler
