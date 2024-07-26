@@ -35,6 +35,7 @@ enum {
 	INSTR_BCD,
 	INSTR_DUMP_REG,
 	INSTR_LOAD_REG,
+	INSTR_JMP_I,
 	TOTAL_INSTR,
 	INSTR_INVALID,
 };
@@ -69,6 +70,7 @@ const char* instructionNames[] = {
 	[INSTR_BCD] = "bcd",
 	[INSTR_DUMP_REG] = "dump_reg",
 	[INSTR_LOAD_REG] = "load_reg",
+	[INSTR_JMP_I] = "jmp_i",
 };
 
 uint8_t validInstruction(char* str) {
@@ -136,8 +138,6 @@ uint16_t processInstruction(token_t** currentToken, uint16_t pc) {
 			*currentToken = tokenNext(*currentToken);
 			uint16_t addr = getTokenLabelAddr(*currentToken);
 			if(addr == 0) { backpatchHere(pc, (*currentToken)->str + 1); } // skip the @
-			// need to implement indexed jmps eventually
-			// just assuming its direct for now
 			opcode = 0x1000 | addr;
 			break;
 		}
@@ -305,6 +305,13 @@ uint16_t processInstruction(token_t** currentToken, uint16_t pc) {
 			*currentToken = tokenNext(*currentToken);
 			uint16_t x = getTokenReg(*currentToken);
 			opcode = 0xF065 | (x << 8);
+			break;
+		}
+		case INSTR_JMP_I: {
+			*currentToken = tokenNext(*currentToken);
+			uint16_t addr = getTokenLabelAddr(*currentToken);
+			if(addr == 0) { backpatchHere(pc, (*currentToken)->str + 1); } // skip the @
+			opcode = 0xB000 | addr;
 			break;
 		}
 	}

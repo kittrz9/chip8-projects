@@ -1,7 +1,11 @@
 
 ; funny comment
 entry:
-	ldv V0, #0 ; end of line comment
+	ldv V0, #2 ; end of line comment
+	jmp_i @indexedJmp
+indexedJmp:
+	ret ; will crash if the indexed jmp doesn't work
+	ldv V0, #0
 	ldv V1, #0
 	ldv V2, #a
 	call @deez

@@ -245,6 +245,9 @@ void cpuStep(void) {
 		case OP_IN:
 			printf("input unimplemented: %04X\n", op);
 			break;
+		case OP_JMP_INDEX:
+			cpu.pc = cpu.v[0] + ADDR - 2;
+			break;
 		default:
 			unimplemented(op);
 	}
