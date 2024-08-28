@@ -3,8 +3,21 @@
 set -xe
 
 CC=clang
-NAME=chip8
+NAME=chip8emu
 LIBS=-lSDL2
+MODE=interp
+
+case $MODE in
+	jit)
+		DEFINES=-DCPU_JIT
+		;;
+	interp)
+		DEFINES=-DCPU_INTERP
+		;;
+	*)
+		echo "unknown mode $MODE in build.sh"
+		exit 1
+esac
 
 C_FILES="$(find src/ -name "*.c")"
 
@@ -13,7 +26,7 @@ mkdir obj/ build/
 
 for f in $C_FILES; do
 	OBJNAME=$(echo $f | sed -e "s/src/obj/;s/\.c/\.o/")
-	$CC -c $f -o $OBJNAME
+	$CC $DEFINES -c $f -o $OBJNAME
 	OBJS="$OBJNAME $OBJS"
 done
 
