@@ -51,11 +51,16 @@ void unimplemented(uint16_t opcode) {
 	exit(1);
 }
 
+#ifdef CPU_JIT
+void cpuJitInit(void);
+#endif
+
 void cpuInit(void) {
 	cpu.pc = 0x200;
 	memcpy(ram, font, sizeof(font));
 
 	#ifdef CPU_JIT
-	// allocate executable ram for the jit compiler
+	// in a different function to separate jit stuff from generic cpu stuff
+	cpuJitInit();
 	#endif
 }
