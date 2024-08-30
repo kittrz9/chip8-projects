@@ -26,8 +26,8 @@ mkdir obj/ build/
 
 for f in $C_FILES; do
 	OBJNAME=$(echo $f | sed -e "s/src/obj/;s/\.c/\.o/")
-	$CC $DEFINES -c $f -o $OBJNAME
+	$CC -g $DEFINES -c $f -o $OBJNAME
 	OBJS="$OBJNAME $OBJS"
 done
 
-$CC $OBJS -o build/$NAME $LIBS
+$CC -g $OBJS -o build/$NAME $LIBS

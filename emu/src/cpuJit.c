@@ -12,8 +12,6 @@
 // arbitrary size
 #define EXEC_BUFFER_SIZE 4096
 
-typedef void (*func)(void);
-
 typedef struct {
 	uint8_t* instructions;
 	size_t length; // could probably have a better name, since this is how many bytes have been added to the buffer
@@ -170,10 +168,6 @@ void cpuJitRun(void) {
 
 						// could probably do some loop unrolling shenanigans with this
 						//
-						// either rasm2 is being weird and wont let me know the actual instruction to load a byte from a 64 bit address into rsi
-						// or the x86_64 instruction set is genuinely just so fucking stupid that I can only move something from a 64 bit address into rax and then move that into rsi
-						// either way, I fucking hate the x86 instruction set
-						// 
 						//    xor rax, rax
 						execBufferAddData(&mainBuffer, "\x48\x31\xc0", 3);
 						//    mov al, byte [cpu.v + x]
@@ -183,32 +177,44 @@ void cpuJitRun(void) {
 						execBufferAddData(&mainBuffer, "\x48\x89\xc6", 3);
 						//    mov cl, 3
 						execBufferAddData(&mainBuffer, "\xb1\x03", 2);
-						//    mov rbx, (&cpu.i + 2) ; also dec each loop
+						//    mov rbx, (ram + 2) ; also dec each loop
 						execBufferAddData(&mainBuffer, "\x48\xbb", 2);
-						execBufferAdd64(&mainBuffer, (uint64_t)(&cpu.i + 2));
+						execBufferAdd64(&mainBuffer, (uint64_t)(ram + 2));
+						//    mov rdx, &cpu.i
+						execBufferAddData(&mainBuffer, "\x48\xba", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)(&cpu.i));
+						//    movzx rax, word[rdx]
+						execBufferAddData(&mainBuffer, "\x48\x0f\xb7\x02", 4);
+						//    add rbx, rax
+						execBufferAddData(&mainBuffer, "\x48\x01\xc3", 3);
 						//    mov rdi, 10 ; why can't I use div with an immediate value
 						execBufferAddData(&mainBuffer, "\x48\xc7\xc7\x0a\x00\x00\x00", 7);
+						//    xor rdx, rdx ; messes up the later div becauase funny x86
+						execBufferAddData(&mainBuffer, "\x48\x31\xd2", 3);
 						//loop:
 						//    mov rax, rsi
 						execBufferAddData(&mainBuffer, "\x48\x89\xf0", 3);
-						//    div rdi ; rdx has remainder
-						execBufferAddData(&mainBuffer, "\x48\xf7\xf7", 3);
+						//    div edi ; rdx has remainder
+						execBufferAddData(&mainBuffer, "\xf7\xf7", 2);
 						//    mov byte [rbx], dl
 						execBufferAddData(&mainBuffer, "\x88\x13", 2);
 						//    sub rsi, rdx
 						execBufferAddData(&mainBuffer, "\x48\x29\xd6", 3);
 						//    mov rax, rsi
 						execBufferAddData(&mainBuffer, "\x48\x89\xf0", 3);
-						//    div rdi ; actual div by 10 in rax
-						execBufferAddData(&mainBuffer, "\x48\xf7\xf7", 3);
+						//    xor rdx, rdx ; have to clear rdx again beacuse funny x86
+						execBufferAddData(&mainBuffer, "\x48\x31\xd2", 3);
+						//    div edi ; actual div by 10 in rax
+						execBufferAddData(&mainBuffer, "\xf7\xf7", 2);
 						//    mov rsi, rax
 						execBufferAddData(&mainBuffer, "\x48\x89\xc6", 3);
 						//    dec rbx
 						execBufferAddData(&mainBuffer, "\x48\xff\xcb", 3);
 						//    dec cl
 						execBufferAddData(&mainBuffer, "\xfe\xc9", 2);
-						//    jnz loop (-25) ; could be wrong, I haven't tested this
-						execBufferAddData(&mainBuffer, "\x75\xe5", 2);
+						//    jnz loop (-23) ; could be wrong, I haven't tested this
+						execBufferAddData(&mainBuffer, "\x75\xe4", 2);
+						readingOps = 0; // just to see if actually running the code works fine
 						break;
 					default:
 						unimplemented(op);
@@ -220,8 +226,9 @@ void cpuJitRun(void) {
 		cpu.pc += 2;
 		execBufferDebug(&mainBuffer);
 	}
-	/*execBufferAdd8(&mainBuffer, 0xc3); // ret
-	execBufferRun(&mainBuffer);*/
+	execBufferAdd8(&mainBuffer, 0xc3); // ret
+	execBufferRun(&mainBuffer);
+	printf("%02X %02X %02X\n", ram[cpu.i], ram[cpu.i + 1], ram[cpu.i + 2]);
 }
 
 #endif // CPU_JIT
