@@ -68,8 +68,33 @@ void execBufferDebug(execBuffer_t* buffer) {
 	printf("\n");
 }
 
+// not gonna bother writing this in assembly, should probably move this to the io files
+void draw(uint8_t x, uint8_t y, uint8_t h) {
+	/*uint8_t xPos = cpu.v[x] % 64;
+	uint8_t yPos = cpu.v[y] % 64;
+	uint8_t* source = &ram[cpu.i];
+	cpu.v[0xF] = 0;
+	for(uint8_t i = 0; i < h; ++i) {
+		for(uint8_t j = 0; j < 8; ++j) {
+			uint32_t* target = &fbPixels[xPos + yPos*FRAME_WIDTH];
+			uint32_t original = *target;
+			uint8_t bit = (*source >> (7-j)) & 1;
+			*target = ((0xFFFFFF00 * bit) ^ original)|0xFF;
+			if(*target == 0xFF && original != 0xFF) {
+				cpu.v[0xF] = 1;
+			}
+			xPos = (xPos+1) % 64;
+		}
+		++source;
+		yPos = (yPos+1) % 32;
+		xPos -= 8;
+	}*/
+	screenUpdate();
+}
+
 void cpuJitInit(void) {
 	execBufferInit(&mainBuffer);
+	fbPixels[0] = 0xF0;
 }
 
 void cpuJitRun(void) {
@@ -152,12 +177,77 @@ void cpuJitRun(void) {
 						execBufferAdd8(&mainBuffer, 0xa2);
 						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + X);
 						break;
+					case 2:
+						// cpu.v[X] &= cpu.v[Y];
+						// mov al, byte [cpu.v + X]
+						execBufferAdd8(&mainBuffer, 0xa0);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + X);
+						// mov rbx, cpu.v + Y
+						execBufferAddData(&mainBuffer, "\x48\xbb", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + Y);
+						// and al, byte [rbx]
+						execBufferAddData(&mainBuffer, "\x22\x03", 2);
+						break;
+					case 5:
+						//cpu.v[0xF] = cpu.v[X] <= cpu.v[Y];
+						//cpu.v[X] -= cpu.v[Y];
+
+						// xor cl, cl
+						execBufferAddData(&mainBuffer, "\x30\xc9", 2);
+						// mov dl, 1
+						execBufferAddData(&mainBuffer, "\xb2\x01", 2);
+						// mov al, byte[cpu.v + Y]
+						execBufferAdd8(&mainBuffer, 0xa0);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + Y);
+						// mov bl, al
+						execBufferAddData(&mainBuffer, "\x88\xc3", 2);
+						// mov al, byte[cpu.v + X]
+						execBufferAdd8(&mainBuffer, 0xa0);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + X);
+						// sub al, bl
+						execBufferAddData(&mainBuffer, "\x66\x29\xd8", 3);
+						// cmovge cl, dl ; might be the wrong condition
+						execBufferAddData(&mainBuffer, "\x0f\x4d\xca", 3);
+						// mov rbx, cpu.v + X
+						execBufferAddData(&mainBuffer, "\x48\xbb", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + X);
+						// mov byte[rbx], al
+						execBufferAddData(&mainBuffer, "\x88\x03", 2);
+						// mov rbx, cpu.v + 0xF
+						execBufferAddData(&mainBuffer, "\x48\xbb", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + 0xF);
+						// mov byte[rbx], cl
+						execBufferAddData(&mainBuffer, "\x88\x0b", 2);
+						break;
 					default:
 						unimplemented(op);
 				}
 				break;
 			case OP_MISC2:
 				switch(op&0xFF) {
+					case 0x29:
+						//cpu.i = cpu.v[X] * 5;
+
+						// xor ax, ax
+						execBufferAddData(&mainBuffer, "\x66\x31\xc0", 3);
+						// mov rbx, cpu.v
+						execBufferAddData(&mainBuffer, "\x48\xbb", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v);
+						// add rbx, X
+						execBufferAddData(&mainBuffer, "\x48\x83\xc3", 3);
+						execBufferAdd8(&mainBuffer, X);
+						// mov al, byte [rbx]
+						execBufferAddData(&mainBuffer, "\x8a\x03", 2);
+						// mov cl, 5
+						execBufferAddData(&mainBuffer, "\xb1\x05", 2);
+						// mul cl
+						execBufferAddData(&mainBuffer, "\xf6\xe1", 2);
+						// mov rbx, &cpu.i
+						execBufferAddData(&mainBuffer, "\x48\xbb", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)&cpu.i);
+						// mov word[rbx], ax
+						execBufferAddData(&mainBuffer, "\x66\x89\x03", 3);
+						break;
 					case 0x33:
 						//uint8_t value = cpu.v[X];
 						//for(uint8_t i = 0; i < 3; ++i) {
@@ -214,10 +304,104 @@ void cpuJitRun(void) {
 						execBufferAddData(&mainBuffer, "\xfe\xc9", 2);
 						//    jnz loop (-23) ; could be wrong, I haven't tested this
 						execBufferAddData(&mainBuffer, "\x75\xe4", 2);
-						readingOps = 0; // just to see if actually running the code works fine
+						break;
+					case 0x65:
+						//for(uint8_t i = 0; i <= X; ++i) {
+						//cpu.v[i] = ram[cpu.i + i];
+						//}
+
+						//   mov cl, X+1
+						execBufferAdd8(&mainBuffer, 0xb1);
+						execBufferAdd8(&mainBuffer, X);
+						//   mov rbx, ram + X
+						execBufferAddData(&mainBuffer, "\x48\xbb", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)(ram + X));
+						//   mov rdx, &cpu.i
+						execBufferAddData(&mainBuffer, "\x48\xba", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)(&cpu.i));
+						//   movzx rax, word[rdx]
+						execBufferAddData(&mainBuffer, "\x0f\xb6\x02", 3);
+						//   add rbx, rax
+						execBufferAddData(&mainBuffer, "\x48\x01\xc3", 3);
+						//   mov rax, cpu.v + X
+						execBufferAddData(&mainBuffer, "\x48\xb8", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)(cpu.v + X));
+						//loop:
+						//   mov dl, byte[rbx]
+						execBufferAddData(&mainBuffer, "\x8a\x13", 2);
+						//   mov byte[rax], dl
+						execBufferAddData(&mainBuffer, "\x88\x10", 2);
+						//   dec rbx
+						execBufferAddData(&mainBuffer, "\x48\xff\xcb", 3);
+						//   dec rax
+						execBufferAddData(&mainBuffer, "\x48\xff\xc8", 3);
+						//   dec cl
+						execBufferAddData(&mainBuffer, "\xfe\xc9", 2);
+						//   jnz loop
+						execBufferAddData(&mainBuffer, "\x75\xf2", 2);
 						break;
 					default:
 						unimplemented(op);
+				}
+				break;
+			case OP_DRAW:
+				// it seems to break if I try to call screenUpdate in this context, I have no clue why
+				// running it with -fsanitize=address makes it not have this issue, and -fsanitize=undefined doesn't seem to show any relevant errors
+				// going to just force it to interpret this instruction for now until I can figure this out
+
+				// mov edi, X
+				/*execBufferAdd8(&mainBuffer, 0xbf);
+				execBufferAdd32(&mainBuffer, (uint32_t)X);
+				// mov esi, Y
+				execBufferAdd8(&mainBuffer, 0xbe);
+				execBufferAdd32(&mainBuffer, (uint32_t)Y);
+				// mov edx, op&0xF
+				execBufferAdd8(&mainBuffer, 0xba);
+				execBufferAdd32(&mainBuffer, (uint32_t)(op&0xF));
+				// mov rax, draw
+				execBufferAddData(&mainBuffer, "\x48\xb8", 2);
+				execBufferAdd64(&mainBuffer, (uint64_t)draw);
+				// call rax
+				execBufferAddData(&mainBuffer, "\xff\xd0", 2);*/
+
+				execBufferAdd8(&mainBuffer, 0xc3); // ret
+				execBufferRun(&mainBuffer);
+				uint8_t xPos = cpu.v[X] % 64;
+				uint8_t yPos = cpu.v[Y] % 64;
+				uint8_t* source = &ram[cpu.i];
+				cpu.v[0xF] = 0;
+				for(uint8_t i = 0; i < (op & 0xF); ++i) {
+					for(uint8_t j = 0; j < 8; ++j) {
+						uint32_t* target = &fbPixels[xPos + yPos*FRAME_WIDTH];
+						uint32_t original = *target;
+						uint8_t bit = (*source >> (7-j)) & 1;
+						*target = ((0xFFFFFF00 * bit) ^ original)|0xFF;
+						if(*target == 0xFF && original != 0xFF) {
+							cpu.v[0xF] = 1;
+						}
+						xPos = (xPos+1) % 64;
+					}
+					++source;
+					yPos = (yPos+1) % 32;
+					xPos -= 8;
+				}
+				screenUpdate();
+				break;
+			case OP_SKIP1:
+				// need to execute everything before being able to know whether to skip or not
+				execBufferAdd8(&mainBuffer, 0xc3); // ret
+				execBufferRun(&mainBuffer);
+
+				if(cpu.v[X] == IMM) {
+					cpu.pc += 2;
+				}
+				break;
+			case OP_SKIP2:
+				execBufferAdd8(&mainBuffer, 0xc3); // ret
+				execBufferRun(&mainBuffer);
+
+				if(cpu.v[X] != IMM) {
+					cpu.pc += 2;
 				}
 				break;
 			default:
@@ -225,6 +409,11 @@ void cpuJitRun(void) {
 		}
 		cpu.pc += 2;
 		execBufferDebug(&mainBuffer);
+		// safe gaurd
+		if(mainBuffer.length > EXEC_BUFFER_SIZE - 256) { // also arbitrary
+			execBufferAdd8(&mainBuffer, 0xc3); // ret
+			execBufferRun(&mainBuffer);
+		}
 	}
 	execBufferAdd8(&mainBuffer, 0xc3); // ret
 	execBufferRun(&mainBuffer);

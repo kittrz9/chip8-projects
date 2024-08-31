@@ -6,6 +6,7 @@ CC=clang
 NAME=chip8emu
 LIBS=-lSDL2
 MODE=interp
+CFLAGS=-g
 
 case $MODE in
 	jit)
@@ -26,8 +27,8 @@ mkdir obj/ build/
 
 for f in $C_FILES; do
 	OBJNAME=$(echo $f | sed -e "s/src/obj/;s/\.c/\.o/")
-	$CC -g $DEFINES -c $f -o $OBJNAME
+	$CC $CFLAGS $DEFINES -c $f -o $OBJNAME
 	OBJS="$OBJNAME $OBJS"
 done
 
-$CC -g $OBJS -o build/$NAME $LIBS
+$CC $CFLAGS $OBJS -o build/$NAME $LIBS
