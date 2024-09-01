@@ -105,7 +105,7 @@ void cpuJitRun(void) {
 	uint8_t readingOps = 1; // set to 0 when encountering a conditional jmp
 	while(readingOps) {
 		uint16_t op = ram[cpu.pc]<<8 | ram[cpu.pc+1];
-		printf("%x: %x\n", cpu.pc, op);
+		//printf("%x: %x\n", cpu.pc, op);
 		switch(op >> 12) {
 			case OP_MISC:
 				switch(op&0xFF) {
@@ -218,6 +218,53 @@ void cpuJitRun(void) {
 						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + 0xF);
 						// mov byte[rbx], cl
 						execBufferAddData(&mainBuffer, "\x88\x0b", 2);
+						break;
+					case 7:
+						//cpu.v[0xF] = cpu.v[Y] >= cpu.v[X];
+						//cpu.v[X] = cpu.v[Y] - cpu.v[X];
+
+						// xor cl, cl
+						execBufferAddData(&mainBuffer, "\x30\xc9", 2);
+						// mov dl, 1
+						execBufferAddData(&mainBuffer, "\xb2\x01", 2);
+						// mov al, byte[cpu.v + Y]
+						execBufferAdd8(&mainBuffer, 0xa0);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + Y);
+						// mov bl, al
+						execBufferAddData(&mainBuffer, "\x88\xc3", 2);
+						// mov al, byte[cpu.v + X]
+						execBufferAdd8(&mainBuffer, 0xa0);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + X);
+						// sub al, bl
+						execBufferAddData(&mainBuffer, "\x66\x29\xd8", 3);
+						// cmovle cl, dl ; might be the wrong condition
+						execBufferAddData(&mainBuffer, "\x0f\x4e\xca", 3);
+						// mov rbx, cpu.v + X
+						execBufferAddData(&mainBuffer, "\x48\xbb", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + X);
+						// mov byte[rbx], al
+						execBufferAddData(&mainBuffer, "\x88\x03", 2);
+						// mov rbx, cpu.v + 0xF
+						execBufferAddData(&mainBuffer, "\x48\xbb", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + 0xF);
+						// mov byte[rbx], cl
+						execBufferAddData(&mainBuffer, "\x88\x0b", 2);
+						break;
+					case 0xE:
+						//cpu.v[0xF] = cpu.v[X] >> 7;
+						//cpu.v[X] <<= 1;
+
+						// xor bl, bl
+						execBufferAddData(&mainBuffer, "\x30\xdb", 2);
+						// mov cl, 1
+						execBufferAddData(&mainBuffer, "\xb1\x01", 2);
+						// mov al, byte[cpu.v + X]
+						execBufferAdd8(&mainBuffer, 0xa0);
+						execBufferAdd64(&mainBuffer, (uint64_t)(cpu.v + X));
+						// sal al, 1
+						execBufferAddData(&mainBuffer, "\xd0\xf0", 2);
+						// cmovc bl, cl
+						execBufferAddData(&mainBuffer, "\x0f\x42\xd9", 3);
 						break;
 					default:
 						unimplemented(op);
@@ -386,6 +433,7 @@ void cpuJitRun(void) {
 					xPos -= 8;
 				}
 				screenUpdate();
+				readingOps = 0;
 				break;
 			case OP_SKIP1:
 				// need to execute everything before being able to know whether to skip or not
@@ -395,6 +443,7 @@ void cpuJitRun(void) {
 				if(cpu.v[X] == IMM) {
 					cpu.pc += 2;
 				}
+				readingOps = 0;
 				break;
 			case OP_SKIP2:
 				execBufferAdd8(&mainBuffer, 0xc3); // ret
@@ -403,21 +452,20 @@ void cpuJitRun(void) {
 				if(cpu.v[X] != IMM) {
 					cpu.pc += 2;
 				}
+				readingOps = 0;
+				break;
+			case OP_JMP_INDEX:
+				execBufferAdd8(&mainBuffer, 0xc3); // ret
+				execBufferRun(&mainBuffer);
+
+				cpu.pc = cpu.v[0] + ADDR - 2;
+				readingOps = 0;
 				break;
 			default:
 				unimplemented(op);
 		}
 		cpu.pc += 2;
-		execBufferDebug(&mainBuffer);
-		// safe gaurd
-		if(mainBuffer.length > EXEC_BUFFER_SIZE - 256) { // also arbitrary
-			execBufferAdd8(&mainBuffer, 0xc3); // ret
-			execBufferRun(&mainBuffer);
-		}
 	}
-	execBufferAdd8(&mainBuffer, 0xc3); // ret
-	execBufferRun(&mainBuffer);
-	printf("%02X %02X %02X\n", ram[cpu.i], ram[cpu.i + 1], ram[cpu.i + 2]);
 }
 
 #endif // CPU_JIT

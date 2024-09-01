@@ -5,7 +5,7 @@ set -xe
 CC=clang
 NAME=chip8emu
 LIBS=-lSDL2
-MODE=interp
+MODE=jit
 CFLAGS=-g
 
 case $MODE in
