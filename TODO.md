@@ -1,3 +1,6 @@
  - fix interpreter bugs
  - make the disassembler give labels to places where it jumps back
  - use actual label names in the disassembler
+ - fix jit compiler crashing with -fsanitize=address
+ - implement the rest of the instructions in the jit compiler
+ - cache executable buffers in the jit compiler
