@@ -39,26 +39,25 @@ void execBufferAdd8(execBuffer_t* buffer, uint8_t byte) {
 }
 
 void execBufferAdd16(execBuffer_t* buffer, uint16_t data) {
-	uint16_t* ptr = (uint16_t*)(buffer->instructions + buffer->length);
-	*ptr = data;
-	buffer->length += 2;
+	// fixes "store to misaligned address" with -fsanitize=undefined
+	execBufferAddData(buffer, (char*)&data, 2);
+	//uint16_t* ptr = (uint16_t*)(buffer->instructions + buffer->length);
+	//*ptr = data;
+	//buffer->length += 2;
 }
 
 void execBufferAdd32(execBuffer_t* buffer, uint32_t data) {
-	uint32_t* ptr = (uint32_t*)(buffer->instructions + buffer->length);
-	*ptr = data;
-	buffer->length += 4;
+	execBufferAddData(buffer, (char*)&data, 2);
+	//uint32_t* ptr = (uint32_t*)(buffer->instructions + buffer->length);
+	//*ptr = data;
+	//buffer->length += 4;
 }
 
 void execBufferAdd64(execBuffer_t* buffer, uint64_t data) {
-	uint64_t* ptr = (uint64_t*)(buffer->instructions + buffer->length);
-	*ptr = data;
-	buffer->length += 8;
-}
-
-void execBufferRun(execBuffer_t* buffer) {
-	((void(*)(void))buffer->instructions)();
-	buffer->length = 0;
+	execBufferAddData(buffer, (char*)&data, 8);
+	//uint64_t* ptr = (uint64_t*)(buffer->instructions + buffer->length);
+	//*ptr = data;
+	//buffer->length += 8;
 }
 
 void execBufferDebug(execBuffer_t* buffer) {
@@ -67,6 +66,14 @@ void execBufferDebug(execBuffer_t* buffer) {
 	}
 	printf("\n");
 }
+
+void execBufferRun(execBuffer_t* buffer) {
+	//printf("%04X\n", cpu.pc);
+	//execBufferDebug(buffer);
+	((void(*)(void))buffer->instructions)();
+	buffer->length = 0;
+}
+
 
 // not gonna bother writing this in assembly, should probably move this to the io files
 void draw(uint8_t x, uint8_t y, uint8_t h) {
@@ -94,7 +101,6 @@ void draw(uint8_t x, uint8_t y, uint8_t h) {
 
 void cpuJitInit(void) {
 	execBufferInit(&mainBuffer);
-	fbPixels[0] = 0xF0;
 }
 
 void cpuJitRun(void) {
@@ -105,6 +111,7 @@ void cpuJitRun(void) {
 	uint8_t readingOps = 1; // set to 0 when encountering a conditional jmp
 	while(readingOps) {
 		uint16_t op = ram[cpu.pc]<<8 | ram[cpu.pc+1];
+		//printf("%04X %s\n", op, opNames[op>>12]);
 		//printf("%x: %x\n", cpu.pc, op);
 		switch(op >> 12) {
 			case OP_MISC:
@@ -215,7 +222,7 @@ void cpuJitRun(void) {
 						execBufferAddData(&mainBuffer, "\x88\x03", 2);
 						// mov rbx, cpu.v + 0xF
 						execBufferAddData(&mainBuffer, "\x48\xbb", 2);
-						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + 0xF);
+						execBufferAdd64(&mainBuffer, (uint64_t)(cpu.v + 0xF));
 						// mov byte[rbx], cl
 						execBufferAddData(&mainBuffer, "\x88\x0b", 2);
 						break;
@@ -229,12 +236,12 @@ void cpuJitRun(void) {
 						execBufferAddData(&mainBuffer, "\xb2\x01", 2);
 						// mov al, byte[cpu.v + Y]
 						execBufferAdd8(&mainBuffer, 0xa0);
-						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + Y);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + X);
 						// mov bl, al
 						execBufferAddData(&mainBuffer, "\x88\xc3", 2);
 						// mov al, byte[cpu.v + X]
 						execBufferAdd8(&mainBuffer, 0xa0);
-						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + X);
+						execBufferAdd64(&mainBuffer, (uint64_t)cpu.v + Y);
 						// sub al, bl
 						execBufferAddData(&mainBuffer, "\x66\x29\xd8", 3);
 						// cmovle cl, dl ; might be the wrong condition
@@ -265,6 +272,16 @@ void cpuJitRun(void) {
 						execBufferAddData(&mainBuffer, "\xd0\xf0", 2);
 						// cmovc bl, cl
 						execBufferAddData(&mainBuffer, "\x0f\x42\xd9", 3);
+						// mov rdx, cpu.v + X
+						execBufferAddData(&mainBuffer, "\x48\xba", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)(cpu.v + X));
+						// mov byte[rdx], al
+						execBufferAddData(&mainBuffer, "\x88\x02", 2);
+						// mov rdx, cpu.v + 0xF
+						execBufferAddData(&mainBuffer, "\x48\xba", 2);
+						execBufferAdd64(&mainBuffer, (uint64_t)(cpu.v + 0xF));
+						// mov byte[rdx], bl
+						execBufferAddData(&mainBuffer, "\x88\x1a", 2);
 						break;
 					default:
 						unimplemented(op);
@@ -359,10 +376,10 @@ void cpuJitRun(void) {
 
 						//   mov cl, X+1
 						execBufferAdd8(&mainBuffer, 0xb1);
-						execBufferAdd8(&mainBuffer, X);
-						//   mov rbx, ram + X
+						execBufferAdd8(&mainBuffer, X+1);
+						//   mov rbx, ram
 						execBufferAddData(&mainBuffer, "\x48\xbb", 2);
-						execBufferAdd64(&mainBuffer, (uint64_t)(ram + X));
+						execBufferAdd64(&mainBuffer, (uint64_t)(ram));
 						//   mov rdx, &cpu.i
 						execBufferAddData(&mainBuffer, "\x48\xba", 2);
 						execBufferAdd64(&mainBuffer, (uint64_t)(&cpu.i));
@@ -370,22 +387,22 @@ void cpuJitRun(void) {
 						execBufferAddData(&mainBuffer, "\x0f\xb6\x02", 3);
 						//   add rbx, rax
 						execBufferAddData(&mainBuffer, "\x48\x01\xc3", 3);
-						//   mov rax, cpu.v + X
+						//   mov rax, cpu.v
 						execBufferAddData(&mainBuffer, "\x48\xb8", 2);
-						execBufferAdd64(&mainBuffer, (uint64_t)(cpu.v + X));
+						execBufferAdd64(&mainBuffer, (uint64_t)(cpu.v));
 						//loop:
 						//   mov dl, byte[rbx]
 						execBufferAddData(&mainBuffer, "\x8a\x13", 2);
 						//   mov byte[rax], dl
 						execBufferAddData(&mainBuffer, "\x88\x10", 2);
-						//   dec rbx
-						execBufferAddData(&mainBuffer, "\x48\xff\xcb", 3);
-						//   dec rax
-						execBufferAddData(&mainBuffer, "\x48\xff\xc8", 3);
+						//   inc rbx
+						execBufferAddData(&mainBuffer, "\x48\xff\xc3", 3);
+						//   inc rax
+						execBufferAddData(&mainBuffer, "\x48\xff\xc0", 3);
 						//   dec cl
 						execBufferAddData(&mainBuffer, "\xfe\xc9", 2);
 						//   jnz loop
-						execBufferAddData(&mainBuffer, "\x75\xf2", 2);
+						execBufferAddData(&mainBuffer, "\x75\xf0", 2);
 						break;
 					default:
 						unimplemented(op);

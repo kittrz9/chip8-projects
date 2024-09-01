@@ -6,7 +6,7 @@ CC=clang
 NAME=chip8emu
 LIBS=-lSDL2
 MODE=jit
-CFLAGS=-g
+CFLAGS="-Wall -Wpedantic -Wextra -g -fsanitize=undefined"
 
 case $MODE in
 	jit)
