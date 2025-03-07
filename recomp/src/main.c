@@ -414,16 +414,38 @@ int main(int argc, char** argv) {
 	a.top = a.buffer;
 	astNode* root = parseFunction(&a, &funcs[0]);
 	astFindUsedLabels(root);
+	#if 0
 	printf("/*\n");
 	astDebug(root);
 	printf("*/\n");
+	#endif
 
 	printf("\
 #include <stdint.h>\n\
 #include <string.h>\n\
+#include <stdio.h>\n\
+#include <stdlib.h>\n\
 struct { uint8_t v[16]; uint16_t i; } cpu;\n\
 uint8_t ram[0x1000];\n\
 uint8_t frameBuffer[64*32];\n\
+uint8_t font[] = {\n\
+	0xF0, 0x90, 0x90, 0x90, 0xF0,\n\
+	0x20, 0x60, 0x20, 0x20, 0x70,\n\
+	0xF0, 0x10, 0xF0, 0x80, 0xF0,\n\
+	0xF0, 0x10, 0xF0, 0x10, 0xF0,\n\
+	0x90, 0x90, 0xF0, 0x10, 0x10,\n\
+	0xF0, 0x80, 0xF0, 0x10, 0xF0,\n\
+	0xF0, 0x80, 0xF0, 0x90, 0xF0,\n\
+	0xF0, 0x10, 0x20, 0x40, 0x40,\n\
+	0xF0, 0x90, 0xF0, 0x90, 0xF0,\n\
+	0xF0, 0x90, 0xF0, 0x10, 0xF0,\n\
+	0xF0, 0x90, 0xF0, 0x90, 0x90,\n\
+	0xE0, 0x90, 0xE0, 0x90, 0xE0,\n\
+	0xF0, 0x80, 0x80, 0x80, 0xF0,\n\
+	0xE0, 0x90, 0x90, 0x90, 0xE0,\n\
+	0xF0, 0x80, 0xF0, 0x80, 0xF0,\n\
+	0xF0, 0x80, 0xF0, 0x80, 0x80\n\
+};\n\
 void bcd(uint8_t value) {\n\
 	for(uint8_t i = 0; i < 3; ++i) {\n\
 		uint8_t digit = value %% 10;\n\
@@ -446,8 +468,22 @@ void draw(uint8_t x, uint8_t y, uint8_t n) {\n\
 				cpu.v[15] = 1;\n\
 			}\n\
 			x = (x+1)%%64;\n\
-			++source;\n\
 		}\n\
+		++source;\n\
+		y = (y+1)%%32;\n\
+		x -= 8;\n\
+	}\n\
+	// I want to eventually make this use SDL or something to draw the screen, but this works for now\n\
+	printf(\"\\x1B[H\");\n\
+	for(uint8_t j = 0; j < 32; ++j) {\n\
+		for(uint8_t i = 0; i < 64; ++i) {\n\
+			if(frameBuffer[i + j*64] == 0xFF) {\n\
+				printf(\"#\");\n\
+			} else {\n\
+				printf(\" \");\n\
+			}\n\
+		}\n\
+		printf(\"\\n\");\n\
 	}\n\
 }\n\
 ");
@@ -465,6 +501,14 @@ void draw(uint8_t x, uint8_t y, uint8_t n) {\n\
 		++i;
 	}
 	astWrite(root);
+
+	printf("\
+int main(int argc, char** argv) {\n\
+	memcpy(ram+0x200, rom, %zu);\n\
+	memcpy(ram, font, sizeof(font));\n\
+	func_0000();\n\
+}\n\
+", fileSize);
 	
 	free(buffer);
 
