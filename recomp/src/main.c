@@ -274,7 +274,7 @@ void astWrite(astNode* node) {
 					if((node->opcode & 0xF) == 0xE) {
 						printf("%sreturn;\n", tabs);
 					} else {
-						printf("%sdisplayClear();\n", tabs);
+						printf("%smemset(frameBuffer, 0, sizeof(frameBuffer));\n", tabs);
 					}
 					break;
 				case 2:
@@ -421,16 +421,40 @@ int main(int argc, char** argv) {
 	printf("\
 #include <stdint.h>\n\
 #include <string.h>\n\
-void bcd(uint8_t);\n\
-void displayClear(void);\n\
-void draw(uint8_t, uint8_t, uint8_t);\n\
-struct { uint8_t v[16]; uint16_t i; } cpu;\
-\nuint8_t ram[0x1000];\n\
+struct { uint8_t v[16]; uint16_t i; } cpu;\n\
+uint8_t ram[0x1000];\n\
+uint8_t frameBuffer[64*32];\n\
+void bcd(uint8_t value) {\n\
+	for(uint8_t i = 0; i < 3; ++i) {\n\
+		uint8_t digit = value %% 10;\n\
+		ram[cpu.i + (2+i)] = digit;\n\
+		value = (value - digit)/10;\n\
+	}\n\
+}\n\
+void draw(uint8_t x, uint8_t y, uint8_t n) {\n\
+	x = x %% 64;\n\
+	y = y %% 64;\n\
+	uint8_t* source = &ram[cpu.i];\n\
+	cpu.v[15] = 0;\n\
+	for(uint8_t i = 0; i < n; ++i) {\n\
+		for(uint8_t j = 0; j < 8; ++j) {\n\
+			uint8_t* target = &frameBuffer[x + y*64];\n\
+			uint8_t original = *target;\n\
+			uint8_t bit = (*source >> (7-j)) & 1;\n\
+			*target = (0xFF * bit)^original;\n\
+			if(*target == 0xFF && original != 0xFF) {\n\
+				cpu.v[15] = 1;\n\
+			}\n\
+			x = (x+1)%%64;\n\
+			++source;\n\
+		}\n\
+	}\n\
+}\n\
 ");
 	// including all of the rom until I can make it figure out what parts of memory are read from by the program
 	// will eventually copy this into the ram array once I start working on the runtime stuff
 	// could also probably just initialize the ram array with these values along with the font, but that would require including tons of zeros
-	printf("uint8_t rom[%u] = {", fileSize);
+	printf("uint8_t rom[%zu] = {", fileSize);
 	for(size_t i = 0; i < fileSize; ++i) {
 		printf("0x%02X,", buffer[i]);
 	}
