@@ -342,10 +342,10 @@ void astWrite(astNode* node) {
 							printf("%sbcd(cpu.v[%i]);\n", tabs, X(node->opcode));
 							break;
 						case 0x55:
-							printf("%smemcpy(ram+cpu.i, cpu.v, %i);\n", tabs, X(node->opcode));
+							printf("%smemcpy(ram+cpu.i, cpu.v, %i);\n", tabs, X(node->opcode)+1);
 							break;
 						case 0x65:
-							printf("%smemcpy(cpu.v, ram+cpu.i, %i);\n", tabs, X(node->opcode));
+							printf("%smemcpy(cpu.v, ram+cpu.i, %i);\n", tabs, X(node->opcode)+1);
 							break;
 						default:
 							printf("%s//!! %04X !!\n", tabs, node->opcode);
