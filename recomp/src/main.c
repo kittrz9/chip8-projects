@@ -323,7 +323,9 @@ void astWrite(astNode* node) {
 					}
 					break;
 				case 0xA:
-					printf("%scpu.i = %i;\n", tabs, IMM(node->opcode));
+					// ideally would see how this address is used and then make that part of the rom its own thing
+					// instead of just having all of ram as an array
+					printf("%scpu.i = %i;\n", tabs, ADDR(node->opcode));
 					break;
 				case 0xC:
 					printf("%scpu.v[%i] = (rand()%%255) & %i;\n", tabs, X(node->opcode), IMM(node->opcode));
@@ -425,6 +427,14 @@ void draw(uint8_t, uint8_t, uint8_t);\n\
 struct { uint8_t v[16]; uint16_t i; } cpu;\
 \nuint8_t ram[0x1000];\n\
 ");
+	// including all of the rom until I can make it figure out what parts of memory are read from by the program
+	// will eventually copy this into the ram array once I start working on the runtime stuff
+	// could also probably just initialize the ram array with these values along with the font, but that would require including tons of zeros
+	printf("uint8_t rom[%u] = {", fileSize);
+	for(size_t i = 0; i < fileSize; ++i) {
+		printf("0x%02X,", buffer[i]);
+	}
+	printf("};\n");
 	size_t i = 0;
 	while(funcs[i].allocated) {
 		printf("void func_%04X(void);\n", funcs[i].offset);
