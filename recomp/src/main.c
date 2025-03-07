@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define MAX_FUNC_SIZE 256
 typedef struct chip8Func {
@@ -241,8 +242,9 @@ void astWrite(astNode* node) {
 		printf("label_%04X:\n", node->offset);
 	}
 	static uint8_t depth = 0;
+	char tabs[4] = "";
 	for(uint8_t i = 0; i < depth; ++i) {
-		printf("\t");
+		strncat(tabs, "\t", 1);
 	}
 	switch(node->type) {
 		case AST_FUNCTION:
@@ -263,94 +265,99 @@ void astWrite(astNode* node) {
 		case AST_JMP:
 			//printf("//!! JMP %04X -> %04X !!\n", node->offset, (node->opcode & 0xFFF) - 0x200);
 			// could probably change this to a do {...} while loop
-			printf("goto label_%04X;\n", (node->opcode & 0xFFF)-0x200);
+			printf("%sgoto label_%04X;\n", tabs, (node->opcode & 0xFFF)-0x200);
 			astWrite(node->unaryExpr.branch);
 			return;
 		case AST_INSTRUCTION:
 			switch(node->opcode >> 12) {
 				case 0:
 					if((node->opcode & 0xF) == 0xE) {
-						printf("return;\n");
+						printf("%sreturn;\n", tabs);
 					} else {
-						printf("displayClear();\n");
+						printf("%sdisplayClear();\n", tabs);
 					}
 					break;
 				case 2:
-					printf("func_%04X();\n", ADDR(node->opcode)-0x200);
+					printf("%sfunc_%04X();\n", tabs, ADDR(node->opcode)-0x200);
 					break;
 				case 6:
-					printf("cpu.v[%i] = %i;\n", X(node->opcode), IMM(node->opcode));
+					printf("%scpu.v[%i] = %i;\n", tabs, X(node->opcode), IMM(node->opcode));
 					break;
 				case 7:
-					printf("cpu.v[%i] += %i;\n", X(node->opcode), IMM(node->opcode));
+					printf("%scpu.v[%i] += %i;\n", tabs, X(node->opcode), IMM(node->opcode));
 					break;
 				case 8:
 					switch(node->opcode & 0xF) {
 						case 0:
-							printf("cpu.v[%i] = cpu.v[%i];\n", X(node->opcode), Y(node->opcode));
+							printf("%scpu.v[%i] = cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							break;
 						case 1:
-							printf("cpu.v[%i] |= cpu.v[%i];\n", X(node->opcode), Y(node->opcode));
+							printf("%scpu.v[%i] |= cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							break;
 						case 2:
-							printf("cpu.v[%i] &= cpu.v[%i];\n", X(node->opcode), Y(node->opcode));
+							printf("%scpu.v[%i] &= cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							break;
 						case 3:
-							printf("cpu.v[%i] ^= cpu.v[%i];\n", X(node->opcode), Y(node->opcode));
+							printf("%scpu.v[%i] ^= cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							break;
 						case 4:
-							printf("cpu.v[%i] += cpu.v[%i];\n", X(node->opcode), Y(node->opcode));
+							printf("%scpu.v[15] = ((uint16_t)cpu.v[%i] + (uint16_t)cpu.v[%i]) > 255;\n", tabs, X(node->opcode), Y(node->opcode));
+							printf("%scpu.v[%i] += cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							break;
 						case 5:
-							printf("cpu.v[%i] -= cpu.v[%i];\n", X(node->opcode), Y(node->opcode));
+							printf("%scpu.v[15] = cpu.v[%i] <= cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
+							printf("%scpu.v[%i] -= cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							break;
 						case 6:
-							printf("cpu.v[%i] >>= 1;\n", X(node->opcode));
+							printf("%scpu.v[15] = cpu.v[%i] & 1;\n", tabs, X(node->opcode));
+							printf("%scpu.v[%i] >>= 1;\n", tabs, X(node->opcode));
 							break;
 						case 7:
-							printf("cpu.v[%i] = cpu.v[%i] - cpu.v[%i];\n", X(node->opcode), Y(node->opcode), X(node->opcode));
+							printf("%scpu.v[15] = cpu.v[%i] >= cpu.v[%i];\n", tabs, Y(node->opcode), X(node->opcode));
+							printf("%scpu.v[%i] = cpu.v[%i] - cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode), X(node->opcode));
 							break;
 						case 0xE:
-							printf("cpu.v[%i] <<= 1;\n", X(node->opcode));
+							printf("%scpu.v[15] = cpu.v[%i] >> 7;\n", tabs, X(node->opcode));
+							printf("%scpu.v[%i] <<= 1;\n", tabs, X(node->opcode));
 							break;
 					}
 					break;
 				case 0xA:
-					printf("cpu.i = %i;\n", IMM(node->opcode));
+					printf("%scpu.i = %i;\n", tabs, IMM(node->opcode));
 					break;
 				case 0xC:
-					printf("cpu.v[%i] = (rand()%%255) & %i;\n", X(node->opcode), IMM(node->opcode));
+					printf("%scpu.v[%i] = (rand()%%255) & %i;\n", tabs, X(node->opcode), IMM(node->opcode));
 					break;
 				case 0xD:
-					printf("draw(cpu.v[%i], cpu.v[%i], %i);\n", X(node->opcode), Y(node->opcode), node->opcode&0xF);
+					printf("%sdraw(cpu.v[%i], cpu.v[%i], %i);\n", tabs, X(node->opcode), Y(node->opcode), node->opcode&0xF);
 					break;
 				case 0xF:
 					switch(IMM(node->opcode)) {
 						case 0x29:
-							printf("cpu.i = %i * 5;\n", X(node->opcode));
+							printf("%scpu.i = %i * 5;\n", tabs, X(node->opcode));
 							break;
 						case 0x33:
-							printf("bcd(cpu.v[%i]);\n", X(node->opcode));
+							printf("%sbcd(cpu.v[%i]);\n", tabs, X(node->opcode));
 							break;
 						case 0x55:
-							printf("memcpy(ram+cpu.i, cpu.v, %i);\n", X(node->opcode));
+							printf("%smemcpy(ram+cpu.i, cpu.v, %i);\n", tabs, X(node->opcode));
 							break;
 						case 0x65:
-							printf("memcpy(cpu.v, ram+cpu.i, %i);\n", X(node->opcode));
+							printf("%smemcpy(cpu.v, ram+cpu.i, %i);\n", tabs, X(node->opcode));
 							break;
 						default:
-							printf("//!! %04X !!\n", node->opcode);
+							printf("%s//!! %04X !!\n", tabs, node->opcode);
 							break;
 					}
 					break;
 				default:
-					printf("//!! %04X !!\n", node->opcode);
+					printf("%s//!! %04X !!\n", tabs, node->opcode);
 					break;
 			}
 			astWrite(node->unaryExpr.branch);
 			return;
 		case AST_IF:
-			printf("if(");
+			printf("%sif(", tabs);
 			switch(node->opcode >> 12) {
 				case 3:
 					printf("cpu.v[%i] == %i", X(node->opcode), IMM(node->opcode));
@@ -369,10 +376,7 @@ void astWrite(astNode* node) {
 			++depth;
 			astWrite(node->binaryExpr.left);
 			--depth;
-			for(uint8_t i = 0; i < depth; ++i) {
-				printf("\t");
-			}
-			printf("}\n");
+			printf("%s}\n", tabs);
 			astWrite(node->binaryExpr.right);
 			return;
 		default:
