@@ -305,7 +305,7 @@ void astWrite(astNode* node) {
 							printf("%scpu.v[%i] += cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							break;
 						case 5:
-							printf("%scpu.v[15] = cpu.v[%i] <= cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
+							printf("%scpu.v[15] = cpu.v[%i] > cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							printf("%scpu.v[%i] -= cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							break;
 						case 6:
@@ -313,7 +313,7 @@ void astWrite(astNode* node) {
 							printf("%scpu.v[%i] >>= 1;\n", tabs, X(node->opcode));
 							break;
 						case 7:
-							printf("%scpu.v[15] = cpu.v[%i] >= cpu.v[%i];\n", tabs, Y(node->opcode), X(node->opcode));
+							printf("%scpu.v[15] = cpu.v[%i] > cpu.v[%i];\n", tabs, Y(node->opcode), X(node->opcode));
 							printf("%scpu.v[%i] = cpu.v[%i] - cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode), X(node->opcode));
 							break;
 						case 0xE:
@@ -335,8 +335,11 @@ void astWrite(astNode* node) {
 					break;
 				case 0xF:
 					switch(IMM(node->opcode)) {
+						case 0x1E:
+							printf("%scpu.i += cpu.v[%i];\n", tabs, X(node->opcode));
+							break;
 						case 0x29:
-							printf("%scpu.i = %i * 5;\n", tabs, X(node->opcode));
+							printf("%scpu.i = cpu.v[%i] * 5;\n", tabs, X(node->opcode));
 							break;
 						case 0x33:
 							printf("%sbcd(cpu.v[%i]);\n", tabs, X(node->opcode));
@@ -368,6 +371,9 @@ void astWrite(astNode* node) {
 					printf("cpu.v[%i] != %i", X(node->opcode), IMM(node->opcode));
 					break;
 				case 5:
+					printf("cpu.v[%i] == cpu.v[%i]", X(node->opcode), Y(node->opcode));
+					break;
+				case 9:
 					printf("cpu.v[%i] != cpu.v[%i]", X(node->opcode), Y(node->opcode));
 					break;
 				default:
@@ -449,7 +455,7 @@ uint8_t font[] = {\n\
 void bcd(uint8_t value) {\n\
 	for(uint8_t i = 0; i < 3; ++i) {\n\
 		uint8_t digit = value %% 10;\n\
-		ram[cpu.i + (2+i)] = digit;\n\
+		ram[cpu.i + (2-i)] = digit;\n\
 		value = (value - digit)/10;\n\
 	}\n\
 }\n\
@@ -464,7 +470,7 @@ void draw(uint8_t x, uint8_t y, uint8_t n) {\n\
 			uint8_t original = *target;\n\
 			uint8_t bit = (*source >> (7-j)) & 1;\n\
 			*target = (0xFF * bit)^original;\n\
-			if(*target == 0xFF && original != 0xFF) {\n\
+			if(*target == 0 && original == 0xFF) {\n\
 				cpu.v[15] = 1;\n\
 			}\n\
 			x = (x+1)%%64;\n\
