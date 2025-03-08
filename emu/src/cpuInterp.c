@@ -57,24 +57,24 @@ void cpuInterpStep(void) {
 				case 3:
 					cpu.v[X] ^= cpu.v[Y];
 				case 4:
-					cpu.v[0xF] = ((uint16_t)cpu.v[X] + (uint16_t)cpu.v[Y]) > 255;
 					cpu.v[X] += cpu.v[Y];
+					cpu.v[0xF] = ((uint16_t)cpu.v[X] + (uint16_t)cpu.v[Y]) > 255;
 					break;
 				case 5:
-					cpu.v[0xF] = cpu.v[X] <= cpu.v[Y];
 					cpu.v[X] -= cpu.v[Y];
+					cpu.v[0xF] = cpu.v[X] <= cpu.v[Y];
 					break;
 				case 6:
-					cpu.v[0xF] = cpu.v[X] & 1;
 					cpu.v[X] >>= 1;
+					cpu.v[0xF] = cpu.v[X] & 1;
 					break;
 				case 7:
-					cpu.v[0xF] = cpu.v[Y] >= cpu.v[X];
 					cpu.v[X] = cpu.v[Y] - cpu.v[X];
+					cpu.v[0xF] = cpu.v[Y] >= cpu.v[X];
 					break;
 				case 0xE:
-					cpu.v[0xF] = cpu.v[X] >> 7;
 					cpu.v[X] <<= 1;
+					cpu.v[0xF] = cpu.v[X] >> 7;
 					break;
 				default:
 					unimplemented(op);

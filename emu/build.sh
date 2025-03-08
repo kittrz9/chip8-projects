@@ -5,7 +5,7 @@ set -xe
 CC=clang
 NAME=chip8emu
 LIBS=-lSDL2
-MODE=jit
+MODE=interp
 CFLAGS="-Wall -Wpedantic -Wextra -g -fsanitize=undefined"
 
 case $MODE in

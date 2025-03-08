@@ -1,4 +1,3 @@
- - fix interpreter bugs
  - make the disassembler give labels to places where it jumps back
  - use actual label names in the disassembler
  - fix jit compiler crashing with -fsanitize=address

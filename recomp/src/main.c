@@ -301,24 +301,24 @@ void astWrite(astNode* node) {
 							printf("%scpu.v[%i] ^= cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							break;
 						case 4:
-							printf("%scpu.v[15] = ((uint16_t)cpu.v[%i] + (uint16_t)cpu.v[%i]) > 255;\n", tabs, X(node->opcode), Y(node->opcode));
 							printf("%scpu.v[%i] += cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
+							printf("%scpu.v[15] = ((uint16_t)cpu.v[%i] + (uint16_t)cpu.v[%i]) > 255;\n", tabs, X(node->opcode), Y(node->opcode));
 							break;
 						case 5:
-							printf("%scpu.v[15] = cpu.v[%i] > cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							printf("%scpu.v[%i] -= cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
+							printf("%scpu.v[15] = cpu.v[%i] > cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode));
 							break;
 						case 6:
-							printf("%scpu.v[15] = cpu.v[%i] & 1;\n", tabs, X(node->opcode));
 							printf("%scpu.v[%i] >>= 1;\n", tabs, X(node->opcode));
+							printf("%scpu.v[15] = cpu.v[%i] & 1;\n", tabs, X(node->opcode));
 							break;
 						case 7:
-							printf("%scpu.v[15] = cpu.v[%i] > cpu.v[%i];\n", tabs, Y(node->opcode), X(node->opcode));
 							printf("%scpu.v[%i] = cpu.v[%i] - cpu.v[%i];\n", tabs, X(node->opcode), Y(node->opcode), X(node->opcode));
+							printf("%scpu.v[15] = cpu.v[%i] > cpu.v[%i];\n", tabs, Y(node->opcode), X(node->opcode));
 							break;
 						case 0xE:
-							printf("%scpu.v[15] = cpu.v[%i] >> 7;\n", tabs, X(node->opcode));
 							printf("%scpu.v[%i] <<= 1;\n", tabs, X(node->opcode));
+							printf("%scpu.v[15] = cpu.v[%i] >> 7;\n", tabs, X(node->opcode));
 							break;
 					}
 					break;
@@ -346,9 +346,11 @@ void astWrite(astNode* node) {
 							break;
 						case 0x55:
 							printf("%smemcpy(ram+cpu.i, cpu.v, %i);\n", tabs, X(node->opcode)+1);
+							printf("%scpu.i += %i;\n", tabs, X(node->opcode+1));
 							break;
 						case 0x65:
 							printf("%smemcpy(cpu.v, ram+cpu.i, %i);\n", tabs, X(node->opcode)+1);
+							printf("%scpu.i += %i;\n", tabs, X(node->opcode+1));
 							break;
 						default:
 							printf("%s//!! %04X !!\n", tabs, node->opcode);
