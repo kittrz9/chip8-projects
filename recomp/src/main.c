@@ -335,6 +335,9 @@ void astWrite(astNode* node) {
 					break;
 				case 0xF:
 					switch(IMM(node->opcode)) {
+						case 0x07:
+							printf("%scpu.v[%i] = 0; // delay timer unimplemented!\n", tabs, X(node->opcode));
+							break;
 						case 0x1E:
 							printf("%scpu.i += cpu.v[%i];\n", tabs, X(node->opcode));
 							break;
@@ -378,8 +381,18 @@ void astWrite(astNode* node) {
 				case 9:
 					printf("cpu.v[%i] == cpu.v[%i]", X(node->opcode), Y(node->opcode));
 					break;
+				case 0xE:
+					switch(node->opcode & 0xFF) {
+						case 0x9E:
+							printf("IsKeyReleased(keys[cpu.v[%i]&0xF])", X(node->opcode));
+							break;
+						case 0xA1:
+							printf("IsKeyDown(keys[cpu.v[%i]&0xF])", X(node->opcode));
+							break;
+					}
+					break;
 				default:
-					printf("/* !! %04X !! */", node->opcode);
+					printf("0/* !! %04X !! */", node->opcode);
 					break;
 			}
 			printf("){\n");
@@ -454,6 +467,25 @@ uint8_t font[] = {\n\
 	0xE0, 0x90, 0x90, 0x90, 0xE0,\n\
 	0xF0, 0x80, 0xF0, 0x80, 0xF0,\n\
 	0xF0, 0x80, 0xF0, 0x80, 0x80\n\
+};\n\
+int keys[] = {\n\
+	KEY_NULL,\n\
+	KEY_ONE,\n\
+	KEY_TWO,\n\
+	KEY_THREE,\n\
+	KEY_FOUR,\n\
+	KEY_Q,\n\
+	KEY_W,\n\
+	KEY_E,\n\
+	KEY_R,\n\
+	KEY_A,\n\
+	KEY_S,\n\
+	KEY_D,\n\
+	KEY_F,\n\
+	KEY_Z,\n\
+	KEY_X,\n\
+	KEY_C,\n\
+	KEY_V,\n\
 };\n\
 void bcd(uint8_t value) {\n\
 	for(uint8_t i = 0; i < 3; ++i) {\n\
