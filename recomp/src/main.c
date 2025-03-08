@@ -427,6 +427,7 @@ int main(int argc, char** argv) {
 	#endif
 
 	printf("\
+#include \"raylib.h\"\n\
 #include <stdint.h>\n\
 #include <string.h>\n\
 #include <stdio.h>\n\
@@ -479,7 +480,19 @@ void draw(uint8_t x, uint8_t y, uint8_t n) {\n\
 		y = (y+1)%%32;\n\
 		x -= 8;\n\
 	}\n\
-	// I want to eventually make this use SDL or something to draw the screen, but this works for now\n\
+	if(WindowShouldClose()) { CloseWindow(); exit(1); }\n\
+	BeginDrawing();\n\
+		ClearBackground(BLACK);\n\
+		for(uint8_t j = 0; j < 32; ++j) {\n\
+			for(uint8_t i = 0; i < 64; ++i) {\n\
+				if(frameBuffer[i + j*64] == 0xFF) {\n\
+					DrawRectangle(i*10, j*10, 10, 10, WHITE);\n\
+				}\n\
+			}\n\
+		}\n\
+	EndDrawing();\n\
+"
+/*
 	printf(\"\\x1B[H\");\n\
 	for(uint8_t j = 0; j < 32; ++j) {\n\
 		for(uint8_t i = 0; i < 64; ++i) {\n\
@@ -491,6 +504,8 @@ void draw(uint8_t x, uint8_t y, uint8_t n) {\n\
 		}\n\
 		printf(\"\\n\");\n\
 	}\n\
+*/
+"\
 }\n\
 ");
 	// including all of the rom until I can make it figure out what parts of memory are read from by the program
@@ -510,6 +525,7 @@ void draw(uint8_t x, uint8_t y, uint8_t n) {\n\
 
 	printf("\
 int main(int argc, char** argv) {\n\
+	InitWindow(640, 320, \"asdfasdf\");\n\
 	memcpy(ram+0x200, rom, %zu);\n\
 	memcpy(ram, font, sizeof(font));\n\
 	func_0000();\n\
