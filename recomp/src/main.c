@@ -365,16 +365,16 @@ void astWrite(astNode* node) {
 			printf("%sif(", tabs);
 			switch(node->opcode >> 12) {
 				case 3:
-					printf("cpu.v[%i] == %i", X(node->opcode), IMM(node->opcode));
-					break;
-				case 4:
 					printf("cpu.v[%i] != %i", X(node->opcode), IMM(node->opcode));
 					break;
+				case 4:
+					printf("cpu.v[%i] == %i", X(node->opcode), IMM(node->opcode));
+					break;
 				case 5:
-					printf("cpu.v[%i] == cpu.v[%i]", X(node->opcode), Y(node->opcode));
+					printf("cpu.v[%i] != cpu.v[%i]", X(node->opcode), Y(node->opcode));
 					break;
 				case 9:
-					printf("cpu.v[%i] != cpu.v[%i]", X(node->opcode), Y(node->opcode));
+					printf("cpu.v[%i] == cpu.v[%i]", X(node->opcode), Y(node->opcode));
 					break;
 				default:
 					printf("/* !! %04X !! */", node->opcode);
